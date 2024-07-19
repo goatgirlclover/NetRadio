@@ -26,7 +26,7 @@ namespace NetRadio
     [BepInDependency("goatgirl.NetRadioPOC", BepInDependency.DependencyFlags.SoftDependency)]
     public class NetRadioPlugin : BaseUnityPlugin
     {
-        //internal static ManualLogSource Log;
+        //internal static ManualLogSource Log; // LiveRadio.Log
         internal static Harmony Harmony = new Harmony(NetRadio.PluginGUID);
         public static NetRadioPlugin Instance { get; private set; }
         public string Directory => Path.GetDirectoryName(Info.Location);
@@ -46,7 +46,7 @@ namespace NetRadio
             
             AppNetRadio.Initialize();
             NetRadioSettings.BindSettings(Config);
-            //NetRadioSettings.LoadURLs(); // moved to radiomanager start    
+            //NetRadioSettings.LoadURLs(); // moved to global radiomanager start    
 
             foreach (var plugin in BepInEx.Bootstrap.Chainloader.PluginInfos) { 
                 if (plugin.Value.Metadata.GUID.Contains("BombRushRadio")) { hasBRR = true; } 

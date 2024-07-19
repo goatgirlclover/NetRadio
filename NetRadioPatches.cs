@@ -120,7 +120,7 @@ namespace NetRadio {
     }
 
 
-    // spatial raadio testing
+    // spatial radio testing
     [HarmonyPatch(typeof(ASceneSetupInstruction))]
 	internal class patch_StageManager_OnPostRender
 	{

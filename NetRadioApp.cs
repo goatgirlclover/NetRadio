@@ -52,13 +52,11 @@ namespace NetRadio
 
         private static bool justCleared = false;
         public static bool playing = false;
+        public static bool runPrefix = true;
         
         private static MediaFoundationReader mediaFoundationReader;
         public static WaveOutEvent waveOut;
         private static VolumeSampleProvider volumeSampleProvider;
-
-        //private static List<TextMeshProUGUI> urlLabels;
-        public static bool runPrefix = true;
 
         public static Sprite SelectedButtonSprite;
         public static Sprite UnselectedButtonSprite;
@@ -75,6 +73,7 @@ namespace NetRadio
         public static List<int> urlWrapOffsets = new List<int>{};
         public static List<string> originalURLLabelText = new List<string>{};
         public static List<bool> urlIsTooLong = new List<bool>{};
+        //private static List<TextMeshProUGUI> urlLabels;
 
         public static string dataDirectory = Path.Combine(NetRadioPlugin.Instance.Directory, "RadioApp-res/");
 
@@ -95,6 +94,7 @@ namespace NetRadio
         public const float iconOffsetY = 170f;
 
         public static int normalButtonIndexOffset = 0;
+        
         public static bool musicPlayerWasInterrupted = false;
         public static bool globalRadioWasInterrupted = false;
         public static int musicPlayerInterruptSamples = 0;
@@ -361,8 +361,6 @@ namespace NetRadio
                 bool tooLong = urlLabel.fontSize <= urlLabel.fontSizeMin;
                 if (urlLabel.text == originalLabelText) {
                     urlIsTooLong[buttonIndex] = tooLong;
-                    //if (buttonIndex < 0 || buttonIndex >= urlIsTooLong.Count) { urlIsTooLong.Add(tooLong); }
-                    //else { urlIsTooLong[buttonIndex] = tooLong; }
                 }
 
                 Image disc = button.Label.gameObject.transform.GetChild(1).gameObject.GetComponent<Image>();
@@ -409,17 +407,6 @@ namespace NetRadio
             base.OnAppInit();
             CreateTitleBar(appName, IconSprite);//CreateIconlessTitleBar(appName);
             ScrollView = PhoneScrollView.Create(this);
-
-            //var tex = new Texture2D(1, 1);
-            //var imageData = File.ReadAllBytes(Path.Combine(NetRadioPlugin.Instance.Directory, "NetRadio-PhoneOverlay.png"));
-            //tex.LoadImage(imageData);
-
-            //var pictureframeprefab = (NetRadioPlugin.player.phone.AppInstances["AppCamera"] as AppCamera).m_PictureframePrefab;
-            //Pictureframe component = UnityEngine.Object.Instantiate<GameObject>(pictureframeprefab, base.Content).GetComponent<Pictureframe>();
-			//component.SetPicture(tex);
-
-            //component.transform.position = new Vector3(component.transform.position.x, component.transform.position.y - 50f, component.transform.position.z);
-            //component.transform.localScale = new Vector3(1.2f, 1.2f, 1.2f);
         }   
 
         private static SimplePhoneButton CreateSimpleButton(string label) {
@@ -434,11 +421,6 @@ namespace NetRadio
 
             url = url.Replace("https://", "").Replace("http://", "").Replace("www.", "").Trim();
             url += "        ";
-            //originalURLLabelText.Add(url);
-            //var confirmArrow = button.gameObject.transform.Find("Confirm Arrow");
-
-            //button.ButtonImage = (new image based on my texture);
-            //button.CacheResources();
 
             var labelGO = new GameObject("URLLabel");
             var tmp = labelGO.AddComponent<TextMeshProUGUI>();
@@ -451,7 +433,7 @@ namespace NetRadio
             tmp.enableAutoSizing = true;
             tmp.enableWordWrapping = false;
             //tmp.maxVisibleLines = 2;
-            //button.Label = tmp;
+
             var titleLabel = button.Label;
             labelGO.transform.SetParent(titleLabel.gameObject.transform, false);
             labelGO.transform.localPosition = new Vector3(urlOffsetX, urlOffsetY, 0f);

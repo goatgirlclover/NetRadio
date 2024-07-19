@@ -61,7 +61,7 @@ namespace NetRadio
             if (monoVolumeSampleProvider != null) { monoVolumeSampleProvider.Volume = Mathf.Clamp01(value)*volume; }
         }}
 
-        public float volume = 0.9f; // base volume for radio
+        public float volume = 0.9f; // base volume for radio. set to 1.0 for globalradio
 
         public bool playing { 
             get { return waveOut != null ? waveOut.PlaybackState == PlaybackState.Playing : false; } 
@@ -77,6 +77,7 @@ namespace NetRadio
         public Thread playURLThread;
         public bool useThread = true;
         public bool threadRunning { get { return playURLThread is Thread ? playURLThread.IsAlive : false; }}
+        public bool failedToLoad = false;
         
         private static System.Net.Http.HttpClient m_httpClient = null;
         private string currentMetadata;
@@ -85,8 +86,6 @@ namespace NetRadio
         
         //public CancellationTokenSource cts; 
         //Regex metaRegex = new Regex(@"/(?<=\')(.*?)(?=\')/");
-
-        public bool failedToLoad = false;
 
         private void Start() { 
             Log.LogInfo("Loaded radio manager");
@@ -347,15 +346,12 @@ namespace NetRadio
         {
             if (cam == null || audioEmitter == null) { return pan; }
 
-            // Get the direction the camera is pointing
-            Vector3 cameraForward = player.transform.position - cam.transform.position;
-            // Get the vector from the camera to the audio emitter
+            Vector3 cameraForward = cam.transform.forward; //player.transform.position - cam.transform.position; // unreliable
             Vector3 directionToEmitter = audioEmitter.transform.position - cam.transform.position;
 
-            // Project the vectors onto the camera's forward plane (ignore height)
+            // Project the vectors onto the camera's forward plane (ignore height or magnitude)
             directionToEmitter.y = 0f;
             cameraForward.y = 0f;
-            // Normalize both vectors
             cameraForward.Normalize();
             directionToEmitter.Normalize();
 
@@ -363,7 +359,6 @@ namespace NetRadio
             directionToEmitter = Quaternion.AngleAxis(-90, Vector3.up) * directionToEmitter;
             // Calculate the dot product between the two normalized vectors
             float dotProduct = Vector3.Dot(cameraForward, directionToEmitter);
-            // Clamp the dot product to avoid values outside the -1 to 1 range
             dotProduct = Mathf.Clamp(dotProduct, -1f, 1f);
 
             // Map the dot product to a stereo panning value (-1 to 1)
@@ -381,6 +376,7 @@ namespace NetRadio
             }
         }
 
+        // EXPERIMENTAL
         public static NetRadioManager CreateRadio(Transform parent, bool playNow = true, bool spatialize = true, List<string> clipURL = null) {
             GameObject radioHolder = new GameObject();
             NetRadioManager NetRadioManager = radioHolder.AddComponent<NetRadioManager>();

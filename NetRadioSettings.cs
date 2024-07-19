@@ -25,6 +25,7 @@ namespace NetRadio
         ";
 
         // appended to end of station list
+        // potentially useful for radio expansion mods
         public static string extraStations = ""; 
 
         public static void BindSettings(ConfigFile Config) {
