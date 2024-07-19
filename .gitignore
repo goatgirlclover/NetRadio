@@ -12,8 +12,6 @@
 *.bat
 dev/
 lib/*.dll
-include/*.dll
-include/**/*.dll
 thunderstore/
 
 # User-specific files (MonoDevelop/Xamarin Studio)
