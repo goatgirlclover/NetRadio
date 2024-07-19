@@ -66,13 +66,15 @@ namespace NetRadio
         public static List<Sprite> UnselectedAntennaSprites = new List<Sprite>{}; // when not playing, stay on 0; when playing, bounce from 1-3
         public static Dictionary<string, List<Sprite>> StationIcons = new Dictionary<string, List<Sprite>>();
         public static List<Sprite> ConnectingSprites = new List<Sprite>{}; // index = number of signal lines, index 3 = disconnect
+        public static Image connectIcon;
         //public static Sprite DiscSprite;
         //public static Sprite DiscSpinSprite;
 
-        public static List<int> urlWrapOffsets = new List<int>{};
         public static float time = -1f;
         public static float realTime = 0f;
+        public static List<int> urlWrapOffsets = new List<int>{};
         public static List<string> originalURLLabelText = new List<string>{};
+        public static List<bool> urlIsTooLong = new List<bool>{};
 
         public static string dataDirectory = Path.Combine(NetRadioPlugin.Instance.Directory, "RadioApp-res/");
 
@@ -93,7 +95,9 @@ namespace NetRadio
         public const float iconOffsetY = 170f;
 
         public static int normalButtonIndexOffset = 0;
-        public static Image connectIcon;
+        public static bool musicPlayerWasInterrupted = false;
+        public static bool globalRadioWasInterrupted = false;
+        public static int musicPlayerInterruptSamples = 0;
 
         public static void Initialize() { 
             IconSprite = LoadSprite(Path.Combine(dataDirectory, "icon.png")); 
@@ -206,15 +210,23 @@ namespace NetRadio
                 var nextButton = CreateStationButton(stationTitle, url);
                 nextButton.OnConfirm += () => {
                     if (GlobalRadio.threadRunning) { return; }
+
+                    musicPlayerWasInterrupted = musicPlayer.IsPlaying;
+                    if (musicPlayerWasInterrupted) { musicPlayerInterruptSamples = musicPlayer.CurrentTrackSamples; }
+                    globalRadioWasInterrupted = GlobalRadio.playing && !GlobalRadio.failedToLoad;
+
                     musicPlayer.ForcePaused();
                     GlobalRadio.Play(ScrollView.SelectedIndex - normalButtonIndexOffset); //NetRadioPlugin.GlobalRadio.streamURLs.IndexOf(urlLabels[i].text));//(nextButton.Label.text));
-
+                    
                     mediaFoundationReader.Position = 0;
                     playing = true;
                     waveOut.Play();
                     StartCoroutine(Instance.ClearButtons()); 
                 };
                 ScrollView.AddButton(nextButton);
+
+                if (i >= urlIsTooLong.Count) { urlIsTooLong.Add(false); }
+                else { urlIsTooLong[i] = false; }
             }
 
             if (connectIcon != null) { 
@@ -268,6 +280,15 @@ namespace NetRadio
             CreateAndSaveIconlessTitleBar("Connection failed!");
             if (connectIcon != null) { connectIcon.sprite = ConnectingSprites[3]; }
 
+            if (musicPlayerWasInterrupted) {
+                musicPlayerWasInterrupted = false;
+                musicPlayer.PlayFrom(musicPlayer.CurrentTrackIndex, musicPlayerInterruptSamples);
+            } else if (globalRadioWasInterrupted) {
+                GlobalRadio.Play(GlobalRadio.previousStation); 
+                globalRadioWasInterrupted = false;
+                yield break;
+            }
+
             yield return new WaitForSeconds(1f);
             //Destroy(overlayInstance.gameObject);
             //overlayInstance = null;
@@ -309,14 +330,16 @@ namespace NetRadio
                 if (button == null || buttonIndex < 0 || buttonIndex >= ScrollView.Buttons.Count - normalButtonIndexOffset) {
                     continue;
                 }
-                if (buttonIndex >= urlWrapOffsets.Count) { urlWrapOffsets.Add(0); }
-                bool selected = buttonIndex == ScrollView.SelectedIndex - normalButtonIndexOffset;
 
+                bool selected = buttonIndex == ScrollView.SelectedIndex - normalButtonIndexOffset;
                 TextMeshProUGUI urlLabel = button.Label.gameObject.transform.GetChild(0).gameObject.GetComponent<TextMeshProUGUI>();
-                //foreach (TextMeshProUGUI child in button.Label.GetComponentsInChildren<TextMeshProUGUI>()) { if (child != button.Label && child.name.Contains("URL")) { urlLabel = child; } }
                 if (urlLabel == null) { continue; }
 
-                if (selected) {
+                if (buttonIndex >= urlWrapOffsets.Count) { 
+                    urlWrapOffsets.Add(0); 
+                }
+                //foreach (TextMeshProUGUI child in button.Label.GetComponentsInChildren<TextMeshProUGUI>()) { if (child != button.Label && child.name.Contains("URL")) { urlLabel = child; } }
+                if (selected && urlIsTooLong[buttonIndex]) {
                     time += Time.deltaTime;
                     realTime += Time.deltaTime;
                     if (time > 0.3f) {
@@ -334,6 +357,13 @@ namespace NetRadio
                     time = -1f;
                 }
                 urlLabel.text = originalLabelText.Remove(0, urlWrapOffsets[buttonIndex]) + originalLabelText.Substring(0, urlWrapOffsets[buttonIndex]);
+
+                bool tooLong = urlLabel.fontSize <= urlLabel.fontSizeMin;
+                if (urlLabel.text == originalLabelText) {
+                    urlIsTooLong[buttonIndex] = tooLong;
+                    //if (buttonIndex < 0 || buttonIndex >= urlIsTooLong.Count) { urlIsTooLong.Add(tooLong); }
+                    //else { urlIsTooLong[buttonIndex] = tooLong; }
+                }
 
                 Image disc = button.Label.gameObject.transform.GetChild(1).gameObject.GetComponent<Image>();
                 if (disc == null || !disc.gameObject.name.Contains("Icon")) { continue; }
@@ -415,8 +445,8 @@ namespace NetRadio
             tmp.text = url;
             tmp.alignment = TextAlignmentOptions.Left;
             tmp.font = AppUtility.GetAppFont();
-            tmp.fontSize = 60f;
-            tmp.fontSizeMax = 60f;
+            tmp.fontSize = 55f;
+            tmp.fontSizeMax = 55f;
             tmp.fontSizeMin = 50f;
             tmp.enableAutoSizing = true;
             tmp.enableWordWrapping = false;

@@ -62,18 +62,18 @@ namespace NetRadio
             
             foreach (string station in stations) {
                 if (string.IsNullOrWhiteSpace(station)) { continue; }
+
                 string[] splitStation = station.Split(new [] { ")" }, StringSplitOptions.RemoveEmptyEntries);
-                if (splitStation.Length > 1) {
-                    string streamTitle = splitStation[0].Split(new [] { "(" }, StringSplitOptions.None)[1];
-                    string streamURL = splitStation[1];
-                    newStreams.Add(streamURL);
-                    streamTitles.Add(streamTitle);
-                    NetRadio.Log.LogInfo(streamURL);
-                } else {
-                    newStreams.Add(station);
-                    streamTitles.Add(NetRadio.PluginName);
-                    NetRadio.Log.LogInfo(station);
+                string streamTitle = splitStation.Length > 1 ? splitStation[0].Split(new [] { "(" }, StringSplitOptions.None)[1] : NetRadio.PluginName;
+                string streamURL = splitStation.Length > 1 ? splitStation[1] : station;
+
+                if (!streamURL.StartsWith("https://") && !streamURL.StartsWith("http://")) {
+                    streamURL = "http://" + streamURL;
                 }
+
+                newStreams.Add(streamURL);
+                streamTitles.Add(streamTitle);
+                NetRadio.Log.LogInfo("Added stream " + streamURL);
             }
 
             NetRadio.GlobalRadio.streamURLs = newStreams;
@@ -81,6 +81,7 @@ namespace NetRadio
 
             AppNetRadio.originalURLLabelText.Clear();
             AppNetRadio.urlWrapOffsets.Clear();
+            AppNetRadio.urlIsTooLong.Clear();
         }
 
         public static List<string> SplitStringByCommas(string input) {

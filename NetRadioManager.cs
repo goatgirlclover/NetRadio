@@ -70,7 +70,8 @@ namespace NetRadio
 
         public float pan { get; private set; } = 0f;
 
-        public int currentStation = -1; 
+        public int currentStation { get; private set; } = -1; 
+        public int previousStation { get; private set; } = -1;
         public string currentStationURL { get { return streamURLs[currentStation]; }}
         
         public Thread playURLThread;
@@ -143,8 +144,9 @@ namespace NetRadio
                 
                 StopRadio();
                 //yield return new WaitForSeconds(0.2f);
-                
+                previousStation = currentStation;
                 currentStation = streamIndex;
+
                 if (useThread && !NetRadioSettings.noThreads.Value) { // no freeze
                     playURLThread = new Thread(new ThreadStart(PlayURL));
                     playURLThread.Start();
@@ -190,13 +192,18 @@ namespace NetRadio
                 if (waveOutMono != null) { waveOutMono.Play(); }
             } 
             catch (System.Exception exception) { 
+                if (currentStationURL.StartsWith("http://")) {
+                    streamURLs[currentStation] = currentStationURL.Replace("http://", "https://");
+                    PlayURL();
+                    return;
+                }
                 failedToLoad = true;
                 Log.LogError($"Error playing radio: {exception.Message}"); 
                 Log.LogError(exception.StackTrace); 
                 //currentStation = -1;
             }
 
-            if (GlobalRadio == this && !spatialize) {
+            if (GlobalRadio == this && !spatialize && !failedToLoad) {
                 // metadata on separate connection, so let them run together
                 _= TrackMetadata(); //StartCoroutine(metadataCoroutine);
             }
