@@ -67,6 +67,7 @@ namespace NetRadio
         public static Image connectIcon;
         //public static Sprite DiscSprite;
         //public static Sprite DiscSpinSprite;
+        public static Sprite BlankButtonSprite; 
 
         public static float time = -1f;
         public static float realTime = 0f;
@@ -93,11 +94,14 @@ namespace NetRadio
         public const float iconOffsetX = 250f;
         public const float iconOffsetY = 170f;
 
-        public static int normalButtonIndexOffset = 0;
+        //public static int normalButtonIndexOffset = 0;
+        public static List<PhoneButton> filteredButtons = new List<PhoneButton>{}; // only station buttons
         
         public static bool musicPlayerWasInterrupted = false;
         public static bool globalRadioWasInterrupted = false;
         public static int musicPlayerInterruptSamples = 0;
+
+        public static PhoneButton lastSelectedButton;
 
         public static void Initialize() { 
             IconSprite = LoadSprite(Path.Combine(dataDirectory, "icon.png")); 
@@ -112,6 +116,7 @@ namespace NetRadio
             UnselectedButtonSprite = LoadSprite(Path.Combine(dataDirectory, "SimpleButton.png"));
             //DiscSprite = LoadSprite(Path.Combine(dataDirectory, "StationDisc.png"));
             //DiscSpinSprite = LoadSprite(Path.Combine(dataDirectory, "StationDisc-Spinning.png"));
+            BlankButtonSprite = LoadSprite(Path.Combine(dataDirectory, "BlankButton.png"));
 
             string antennaPath = dataDirectory + "Antenna-";
             foreach (string status in new string[] {"Selected", "Unselected"}) {
@@ -189,14 +194,19 @@ namespace NetRadio
         }
 
         private void AddURLButtons() {
+            lastSelectedButton = null;
             realTime = 0f;
-            normalButtonIndexOffset = 0;
+            //normalButtonIndexOffset = 0;
+            filteredButtons.Clear();
             runPrefix = false;
             // add non-station buttons
             /* var normalButton = CreateSimpleButton("TEST");
             normalButton.OnConfirm += () => {};
             ScrollView.AddButton(normalButton); */
             runPrefix = true;
+
+            var blankButton = CreateHeaderButton("Now playing"); 
+            ScrollView.AddButton(blankButton);
 
             int i = -1;
             int numberOfCustomStreams = 0;
@@ -216,7 +226,7 @@ namespace NetRadio
                     globalRadioWasInterrupted = GlobalRadio.playing && !GlobalRadio.failedToLoad;
 
                     musicPlayer.ForcePaused();
-                    GlobalRadio.Play(ScrollView.SelectedIndex - normalButtonIndexOffset); //NetRadioPlugin.GlobalRadio.streamURLs.IndexOf(urlLabels[i].text));//(nextButton.Label.text));
+                    GlobalRadio.Play(filteredButtons.IndexOf(nextButton)); //NetRadioPlugin.GlobalRadio.streamURLs.IndexOf(urlLabels[i].text));//(nextButton.Label.text));
                     
                     mediaFoundationReader.Position = 0;
                     playing = true;
@@ -224,6 +234,7 @@ namespace NetRadio
                     StartCoroutine(Instance.ClearButtons()); 
                 };
                 ScrollView.AddButton(nextButton);
+                filteredButtons.Add(nextButton);
 
                 if (i >= urlIsTooLong.Count) { urlIsTooLong.Add(false); }
                 else { urlIsTooLong[i] = false; }
@@ -236,6 +247,7 @@ namespace NetRadio
         }
 
         private IEnumerator ClearButtons() {
+            lastSelectedButton = null;
             realTime = 0f;
             justCleared = true;
             //urlLabels.Clear();
@@ -295,6 +307,22 @@ namespace NetRadio
             GlobalRadio.failedToLoad = false;
         }
 
+        public override void OnAppUpdate() {
+            if (ScrollView.Buttons.Any()) {
+                if (ScrollView.SelectedIndex >= 0) {
+                    if (IsHeaderButton((SimplePhoneButton)ScrollView.Buttons[ScrollView.SelectedIndex])) {
+                        int indexOfLastButton = ScrollView.Buttons.IndexOf(lastSelectedButton);
+                        if (indexOfLastButton > ScrollView.SelectedIndex) { // 
+                            ScrollView.ScrollUp();
+                        } else {
+                            ScrollView.ScrollDown();
+                        }
+                    }
+                    lastSelectedButton = ScrollView.Buttons[ScrollView.SelectedIndex];
+                }
+            }
+        }
+
         public override void OnAppLateUpdate() {
             if (connectIcon != null) { connectIcon.enabled = !ScrollView.Buttons.Any(); }
             if (!ScrollView.Buttons.Any()) {
@@ -311,27 +339,42 @@ namespace NetRadio
                     }
                 }
             }
-
+            
             if (volumeSampleProvider != null) { //if (waveOut.PlaybackState == PlaybackState.Playing) {
                 volumeSampleProvider.Volume = radioMusicVolume;
             }
             
             foreach (SimplePhoneButton button in ScrollView.Buttons) {
                 if (!IsStationButton(button)) { 
+                    filteredButtons.Remove(button);
+                    if (IsHeaderButton(button)) {
+                        if (button.Label.text.Contains("Now playing")) {
+                            string musicPlayerTrack = musicPlayer.musicTrackQueue.CurrentMusicTrack.Artist + " - " + musicPlayer.musicTrackQueue.CurrentMusicTrack.Title;
+                            string nowPlaying = GlobalRadio.playing ? GlobalRadio.currentSong : musicPlayerTrack;
+                            button.Label.text = "Now playing " + nowPlaying;
+                            button.Label.alignment = TextAlignmentOptions.Center;
+                        }
+                        button.PlayDeselectAnimation(true);
+                        //button.AnimationParent.transform.localPosition = new Vector3 (0f, button.gameObject.transform.localPosition.y, 0f); 
+                        continue;
+                    }
+
                     if (ScrollView.Buttons.IndexOf(button) == ScrollView.SelectedIndex) {
                         time += Time.deltaTime;
                         realTime += Time.deltaTime;
                     } if (button.ButtonImage.sprite.texture.wrapMode != TextureWrapMode.Clamp) { 
                         button.ButtonImage.sprite.texture.wrapMode = TextureWrapMode.Clamp; 
-                    } continue;
-                }
-
-                int buttonIndex = ScrollView.Buttons.IndexOf(button) - normalButtonIndexOffset;
-                if (button == null || buttonIndex < 0 || buttonIndex >= ScrollView.Buttons.Count - normalButtonIndexOffset) {
+                    } 
+                    
                     continue;
                 }
 
-                bool selected = buttonIndex == ScrollView.SelectedIndex - normalButtonIndexOffset;
+                int buttonIndex = filteredButtons.IndexOf(button);
+                if (button == null || buttonIndex < 0 || buttonIndex >= filteredButtons.Count) {
+                    continue;
+                }
+
+                bool selected = ScrollView.Buttons.IndexOf(button) == ScrollView.SelectedIndex;
                 TextMeshProUGUI urlLabel = button.Label.gameObject.transform.GetChild(0).gameObject.GetComponent<TextMeshProUGUI>();
                 if (urlLabel == null) { continue; }
 
@@ -410,8 +453,21 @@ namespace NetRadio
         }   
 
         private static SimplePhoneButton CreateSimpleButton(string label) {
-            normalButtonIndexOffset++; 
+            //normalButtonIndexOffset++; 
             return PhoneUIUtility.CreateSimpleButton(label); 
+        }
+
+        private static SimplePhoneButton CreateHeaderButton(string label) {
+            runPrefix = false;
+            var button = PhoneUIUtility.CreateSimpleButton(label);
+            var titleLabel = button.Label;
+            var headerSig = new GameObject("Header");
+            headerSig.transform.SetParent(titleLabel.gameObject.transform, false);
+            //normalButtonIndexOffset++;
+            titleLabel.transform.localPosition += new Vector3 (-70f, 0f, 0f);
+            button.ButtonImage.gameObject.RectTransform().sizeDelta = new Vector2(530f * 2f, 100f);
+            runPrefix = true;
+            return button;
         }
 
         private static SimplePhoneButton CreateStationButton(string label, string url) {
@@ -478,6 +534,11 @@ namespace NetRadio
             int childCount = button.Label.gameObject.transform.childCount;
             bool textMatches = button.Label.text.Contains("Custom Station") || button.Label.text == PluginName || NetRadioSettings.streamTitles.Contains(button.Label.text);
             return childCount > 2 && textMatches;
+        }
+
+        public static bool IsHeaderButton(SimplePhoneButton button) {
+            if (button == null || button.Label == null) { return false; }
+            return button.Label.gameObject.transform.GetChild(0).gameObject.name.Contains("Header");
         }
     }
 }

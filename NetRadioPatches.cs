@@ -86,6 +86,21 @@ namespace NetRadio {
         }
     }
 
+    [HarmonyPatch(typeof(StageManager))]
+    internal class SMPatches {
+        [HarmonyPostfix]
+        [HarmonyPatch(typeof(StageManager), "StartMusicForStage", new Type[] { typeof(Stage), typeof(int) })]
+        public static void StartupRadio() {
+            if (NetRadio.gameStarted) { return; }
+            NetRadio.gameStarted = true;
+            NetRadioPlugin.Instance.StartCoroutine(NetRadio.MuteUntilRadioPlaying());
+            if (NetRadioSettings.playOnStartup.Value) {
+                if (NetRadioSettings.startupIndex.Value == -1) { NetRadio.GlobalRadio.PlayRandomStation(); }
+                else { NetRadio.GlobalRadio.PlayRadioStation(NetRadioSettings.startupIndex.Value); }
+            }
+        }
+    }
+
     [HarmonyPatch(typeof(SimplePhoneButton))]
     internal class ButtonPatches {
         static IEnumerable<MethodBase> TargetMethods() {
@@ -98,6 +113,9 @@ namespace NetRadio {
 
         public static void Postfix(SimplePhoneButton __instance) {
             if (player.phone.m_CurrentApp is AppNetRadio && AppNetRadio.runPrefix) {
+                if (AppNetRadio.IsHeaderButton(__instance)) {
+                    __instance.ButtonImage.sprite = AppNetRadio.BlankButtonSprite;
+                }
                 if (!AppNetRadio.IsStationButton(__instance)) { return; }
                 var currentSprite = __instance.ButtonImage.sprite;
                 bool selected = currentSprite == __instance.SelectedButtonSprite;
@@ -127,6 +145,7 @@ namespace NetRadio {
         [HarmonyPatch("SetSceneActive")]
 		private static void Postfix(string sceneToSetActive)
 		{
+            NetRadio.gameStarted = false;
             return; /*
 			Junk[] array = UnityEngine.Object.FindObjectsOfType<Junk>();
 			Junk[] array2 = array;

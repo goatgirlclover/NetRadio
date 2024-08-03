@@ -38,6 +38,8 @@ namespace NetRadio
         public const string PluginGUID = "goatgirl.NetRadio";
         public const string PluginVersion = "1.0.0";
 
+        public static bool gameStarted = false;
+
         public static bool PlayerUsingMusicApp() {
             if (player == null || player.phone == null)  { return false; }
             return (player.phone.m_CurrentApp is AppMusicPlayer && player.phone.IsOn && player.phoneLayerWeight >= 1f);
@@ -53,6 +55,13 @@ namespace NetRadio
             returnSprite.texture.filterMode = FilterMode.Bilinear;
             returnSprite.texture.wrapMode = TextureWrapMode.Clamp;
             return returnSprite;
+        }
+
+        public static IEnumerator MuteUntilRadioPlaying() {
+            while (!GlobalRadio.playing) {
+                musicPlayer.ForcePaused();
+                yield return null;
+            }
         }
     }
 }

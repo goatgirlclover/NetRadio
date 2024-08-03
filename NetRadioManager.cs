@@ -131,6 +131,11 @@ namespace NetRadio
             }
         }
 
+        public void PlayRandomStation() {
+            int randomStation = rando.Next(0, streamURLs.Count);
+            PlayRadioStation(randomStation);
+        }
+
         public void PlayRadioStation(int streamIndex) {
             failedToLoad = false;
             if (streamIndex < 0 || streamIndex >= streamURLs.Count) {
@@ -330,6 +335,7 @@ namespace NetRadio
                 float distanceAudio = distanceBetweenVectors - minDistance;
                 //volume -= distanceAudio/maxDistance; // linear rolloff - try to implement logarithmic later
                 volume -= (Mathf.Sqrt(maxDistance * distanceAudio))/maxDistance;
+                volume = Mathf.Clamp01(volume);
                 //volume = 1f/((maxDistance/10f)*distanceAudio);
             }
             

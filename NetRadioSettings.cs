@@ -12,6 +12,9 @@ namespace NetRadio
     internal class NetRadioSettings {
         public static ConfigEntry<string> streamURLsUnsplit;
         public static ConfigEntry<float> streamVolume;
+        public static ConfigEntry<bool> playOnStartup;
+        public static ConfigEntry<int> startupIndex; 
+
         public static ConfigEntry<string> keybindsReloadUnsplit;
         public static ConfigEntry<bool> noThreads;
 
@@ -37,6 +40,9 @@ namespace NetRadio
             streamURLsUnsplit.SettingChanged += UpdateSettingsEvent;
 
             streamVolume = Config.Bind("Settings", "Radio Volume", 1f, "Relative volume of radio stream compared to in-game music.");
+
+            playOnStartup = Config.Bind("Settings", "Play Radio on Startup", false, "Whether or not a radio station should automatically play upon loading a save.");
+            startupIndex = Config.Bind("Settings", "Startup Radio Station", -1, "The index of the station to play automatically if Play Radio on Startup is enabled (the first station in the NetRadio app is at index 0). If set to -1, the station will be chosen randomly.");
 
             keybindsReloadUnsplit = Config.Bind("Settings", "Reload Radios Keybinds", "F11", "Press to reload all in-game radio streams.");
             keybindsReloadUnsplit.SettingChanged += UpdateSettingsEvent;
