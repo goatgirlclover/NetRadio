@@ -5,6 +5,7 @@ using HarmonyLib;
 using Reptile;
 using Reptile.Phone;
 using UnityEngine;
+using UnityEngine.UI;
 using TMPro;
 using System;
 using System.Collections;
@@ -12,9 +13,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.IO;
-using CommonAPI;
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
+using CommonAPI;
+using CommonAPI.Phone;
+using CommonAPI.UI;
 
 namespace NetRadio
 {
@@ -40,6 +43,9 @@ namespace NetRadio
 
         public static bool gameStarted = false;
 
+        public static Color LabelSelectedColorDefault = new Color32(49, 90, 165, 255);
+        public static Color LabelUnselectedColorDefault = Color.white;
+
         public static bool PlayerUsingMusicApp() {
             if (player == null || player.phone == null)  { return false; }
             return (player.phone.m_CurrentApp is AppMusicPlayer && player.phone.IsOn && player.phoneLayerWeight >= 1f);
@@ -62,6 +68,25 @@ namespace NetRadio
                 musicPlayer.ForcePaused();
                 yield return null;
             }
+        }
+
+        public static bool IsStationButton(SimplePhoneButton button) {
+            if (button == null || button.Label == null) { return false; }
+            int childCount = button.Label.gameObject.transform.childCount;
+            bool textMatches = button.Label.text.Contains("Custom Station") || button.Label.text == PluginName || NetRadioSettings.streamTitles.Contains(button.Label.text);
+            return childCount > 2 && textMatches;
+        }
+
+        public static bool IsHeaderButton(SimplePhoneButton button) {
+            if (button == null || button.Label == null) { return false; }
+            int childCount = button.Label.gameObject.transform.childCount;
+            if (childCount < 1) { return false; }
+            return button.Label.gameObject.transform.GetChild(0).gameObject.name.Contains("Header");
+        }
+
+        public static string StandardizeURL(string originalURL) { // for app display and savedata matching
+            string shortURL = originalURL.Replace("https://", "").Replace("http://", "").Trim().ToLower().TrimEnd('/'); ///originalURL.Replace("https://", "").Replace("http://", "").Replace("www.", "").Trim();
+            return shortURL;
         }
     }
 }

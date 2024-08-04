@@ -42,6 +42,218 @@ namespace NetRadio
 
             overlayInstance = newOverlay;
         }
+
+        public override void OnPressUp() { // if selected the 2nd one and the top one is a blank header, don't bother
+            int currentIndex = ScrollView.SelectedIndex;
+            int nextIndex = currentIndex - 1;
+            int edgeValue = 0;
+
+            if (!(nextIndex < 0 || nextIndex >= ScrollView.Buttons.Count)) { 
+                if (IsHeaderButton((SimplePhoneButton)ScrollView.Buttons[nextIndex]) && nextIndex == edgeValue) {
+                    return;
+                }
+            }
+            
+            base.OnPressUp();
+        } 
+
+        public override void OnPressDown() { // if selected the 2nd-to-last one and the bottom one is blank, don't bother
+            int currentIndex = ScrollView.SelectedIndex;
+            int nextIndex = currentIndex + 1;
+            int edgeValue = ScrollView.Buttons.Count - 1;
+            
+            if (!(nextIndex < 0 || nextIndex >= ScrollView.Buttons.Count)) { 
+                if (IsHeaderButton((SimplePhoneButton)ScrollView.Buttons[nextIndex]) && nextIndex == edgeValue) {
+                    return;
+                }
+            }
+            
+            base.OnPressDown();
+        } 
+    }
+
+    public class AppSelectedStation : TracksHeaderApp {
+        public static AppSelectedStation Instance;
+        public static PhoneButton lastSelectedButton;
+        public static int currentStationIndex;
+
+        public static float time = 0.0f;
+        public static bool justCopied = false;
+        
+        public static int volumeInPercent = 100;
+        public static bool changingVolume = false;
+
+        public override bool Available => false;
+
+        public static void Initialize() { 
+            PhoneAPI.RegisterApp<AppSelectedStation>("selected station"); 
+        }
+
+        public override void OnAppEnable()
+        {
+            Instance = this;
+            base.OnAppEnable();
+            lastSelectedButton = null;
+            CreateAndSaveIconlessTitleBar(GlobalRadio.GetStationTitle(currentStationIndex));//CreateIconlessTitleBar(appName);
+            justCopied = false;
+            changingVolume = false;
+            time = 0.0f;
+
+            string urlForCurrent = NetRadio.StandardizeURL(NetRadio.GlobalRadio.streamURLs[currentStationIndex]);
+            float volumeMultiplier = NetRadioSaveData.stationVolumesByURL.ContainsKey(urlForCurrent) ? (float)NetRadioSaveData.stationVolumesByURL[urlForCurrent] : 1f;
+            float volumeHund = volumeMultiplier * 100f;
+            volumeInPercent = 5 * (int)Math.Round(volumeHund / 5.0);
+
+            var blankButton = AppNetRadio.CreateHeaderButton("Now playing"); 
+            ScrollView.AddButton(blankButton);
+
+            if (GlobalRadio.playing && GlobalRadio.currentStation == currentStationIndex) {
+                var firstButton = PhoneUIUtility.CreateSimpleButton("Disconnect...");
+                firstButton.OnConfirm += () => {
+                    GlobalRadio.Stop();
+                    musicPlayer.PlayFrom(musicPlayer.CurrentTrackIndex, 0);
+                    MyPhone.OpenApp(typeof(AppNetRadio));
+                };
+                ScrollView.AddButton(firstButton);
+            } else {
+                var firstButton = PhoneUIUtility.CreateSimpleButton("Connect...");
+                firstButton.OnConfirm += () => {
+                    StartCoroutine(Instance.ConnectToStation());
+                };
+                ScrollView.AddButton(firstButton);
+            }
+
+            var nextButton = PhoneUIUtility.CreateSimpleButton("Volume: ");
+            nextButton.OnConfirm += () => {
+                changingVolume = !changingVolume;
+            };
+            ScrollView.AddButton(nextButton);
+
+            nextButton = PhoneUIUtility.CreateSimpleButton("Copy URL to clipboard");
+            nextButton.OnConfirm += () => {
+                System.Windows.Forms.Clipboard.SetText(GlobalRadio.streamURLs[currentStationIndex]);
+                time = 0.0f;
+                justCopied = true;
+            };
+            ScrollView.AddButton(nextButton);
+        }
+
+        public IEnumerator ConnectToStation() {
+            int station = currentStationIndex;
+            AppNetRadio.loaded = false;
+            MyPhone.OpenApp(typeof(AppNetRadio));
+            while (!AppNetRadio.loaded) {
+                yield return null;
+            }
+            AppNetRadio.Instance.AttemptConnection(station);
+        }
+
+        public override void OnAppUpdate() {
+            time += Time.deltaTime;
+
+            if (justCopied && time > 1.0) {
+                justCopied = false;
+            }
+
+            if (ScrollView.Buttons.Any()) {
+                if (ScrollView.SelectedIndex >= 0) {
+                    if (IsHeaderButton((SimplePhoneButton)ScrollView.Buttons[ScrollView.SelectedIndex])) {
+                        m_AudioManager.audioSources[3].Stop();
+                        int indexOfLastButton = ScrollView.Buttons.IndexOf(lastSelectedButton);
+                        if (indexOfLastButton > ScrollView.SelectedIndex) { // 
+                            ScrollView.OnPressUp();
+                        } else {
+                            ScrollView.OnPressDown();
+                        }
+                    }
+                    lastSelectedButton = ScrollView.Buttons[ScrollView.SelectedIndex];
+                }
+            }
+
+            foreach (SimplePhoneButton button in ScrollView.Buttons) {
+                if (IsHeaderButton(button)) {
+                    if (button.Label.text.Contains("Now playing")) {
+                        string musicPlayerTrack = musicPlayer.musicTrackQueue.CurrentMusicTrack.Artist + " - " + musicPlayer.musicTrackQueue.CurrentMusicTrack.Title;
+                        string nowPlaying = GlobalRadio.playing ? GlobalRadio.currentSong : musicPlayerTrack;
+                        button.Label.text = "Now playing " + nowPlaying;
+                        button.Label.alignment = TextAlignmentOptions.Center;
+                    }
+                    button.PlayDeselectAnimation(true);
+                } else if (button.Label.text.Contains("Volume:")) {
+                    button.Label.text = "Volume: " + volumeInPercent + "%"; 
+                    SetLabelColor(button, changingVolume ? Color.green : Color.clear);
+                } else if (button.Label.text.Contains("clipboard")) {
+                    button.Label.text = justCopied ? "Copied to clipboard!" : "Copy URL to clipboard";
+                    SetLabelColor(button, justCopied ? Color.green : Color.clear);
+                }
+            }
+
+            if (changingVolume) {
+                string key = StandardizeURL(GlobalRadio.streamURLs[currentStationIndex]);
+                decimal value = (decimal)(((decimal)volumeInPercent)/((decimal)100.00));
+                if (NetRadioSaveData.stationVolumesByURL.ContainsKey(key)) {
+                    NetRadioSaveData.stationVolumesByURL[key] = value;
+                } else { NetRadioSaveData.stationVolumesByURL.Add(key, value); }
+            }
+        }
+
+        public override void OnAppInit()
+        {
+            base.OnAppInit();
+            ScrollView = PhoneScrollView.Create(this);
+        }   
+
+        public override void OnAppDisable()
+        {
+            ScrollView.RemoveAllButtons();
+            base.OnAppDisable();
+            Destroy(overlayInstance.gameObject);
+            justCopied = false;
+            changingVolume = false;
+            time = 0.0f;
+            
+            NetRadioSaveData.Instance.Save();
+        }
+
+        public void SetLabelColor(SimplePhoneButton nextButton, Color color) {
+            if (color == Color.clear) { // treat as default
+                nextButton.Label.faceColor = ScrollView.SelectedIndex == ScrollView.Buttons.IndexOf(nextButton) ? LabelSelectedColorDefault : LabelUnselectedColorDefault;
+                nextButton.LabelSelectedColor = LabelSelectedColorDefault;
+                nextButton.LabelUnselectedColor = LabelUnselectedColorDefault;
+            } else {
+                nextButton.Label.faceColor = color;
+                nextButton.LabelSelectedColor = color;
+                nextButton.LabelUnselectedColor = color;
+            }
+        }
+
+        public override void OnPressUp() { // if selected the 2nd one and the top one is a blank header, don't bother
+            if (changingVolume) {
+                volumeInPercent = Mathf.Clamp(volumeInPercent + 5, 0, 200);
+                return;
+            }
+            
+            base.OnPressUp();
+        } 
+
+        public override void OnPressDown() { // if selected the 2nd-to-last one and the bottom one is blank, don't bother
+            if (changingVolume) {
+                volumeInPercent = Mathf.Clamp(volumeInPercent - 5, 0, 200);
+                return;
+            }
+            
+            base.OnPressDown();
+        } 
+
+        public override void OnHoldUp() {
+            if (changingVolume) {return;}
+            base.OnHoldUp();
+        }
+
+        public override void OnHoldDown() {
+            if (changingVolume) {return;}
+            base.OnHoldDown();
+        }
     }
 
     public class AppNetRadio : TracksHeaderApp
@@ -65,7 +277,7 @@ namespace NetRadio
         public static Dictionary<string, List<Sprite>> StationIcons = new Dictionary<string, List<Sprite>>();
         public static List<Sprite> ConnectingSprites = new List<Sprite>{}; // index = number of signal lines, index 3 = disconnect
         public static Image connectIcon;
-        //public static Sprite DiscSprite;
+        //public static Sprite DiscSprite;f
         //public static Sprite DiscSpinSprite;
         public static Sprite BlankButtonSprite; 
 
@@ -95,13 +307,14 @@ namespace NetRadio
         public const float iconOffsetY = 170f;
 
         //public static int normalButtonIndexOffset = 0;
-        public static List<PhoneButton> filteredButtons = new List<PhoneButton>{}; // only station buttons
+        public static List<SimplePhoneButton> filteredButtons = new List<SimplePhoneButton>{}; // only station buttons
         
         public static bool musicPlayerWasInterrupted = false;
         public static bool globalRadioWasInterrupted = false;
         public static int musicPlayerInterruptSamples = 0;
 
         public static PhoneButton lastSelectedButton;
+        public static bool loaded = false;
 
         public static void Initialize() { 
             IconSprite = LoadSprite(Path.Combine(dataDirectory, "icon.png")); 
@@ -191,6 +404,7 @@ namespace NetRadio
             connectIcon.enabled = false;
 
             base.OnAppEnable();
+            loaded = true;
         }
 
         private void AddURLButtons() {
@@ -221,17 +435,13 @@ namespace NetRadio
                 nextButton.OnConfirm += () => {
                     if (GlobalRadio.threadRunning) { return; }
 
-                    musicPlayerWasInterrupted = musicPlayer.IsPlaying;
-                    if (musicPlayerWasInterrupted) { musicPlayerInterruptSamples = musicPlayer.CurrentTrackSamples; }
-                    globalRadioWasInterrupted = GlobalRadio.playing && !GlobalRadio.failedToLoad;
+                    if (filteredButtons.IndexOf(nextButton) == GlobalRadio.currentStation || !NetRadioSettings.configureRequireConnection.Value) {
+                        AppSelectedStation.currentStationIndex = filteredButtons.IndexOf(nextButton);
+                        MyPhone.OpenApp(typeof(AppSelectedStation));
+                        return;
+                    }
 
-                    musicPlayer.ForcePaused();
-                    GlobalRadio.Play(filteredButtons.IndexOf(nextButton)); //NetRadioPlugin.GlobalRadio.streamURLs.IndexOf(urlLabels[i].text));//(nextButton.Label.text));
-                    
-                    mediaFoundationReader.Position = 0;
-                    playing = true;
-                    waveOut.Play();
-                    StartCoroutine(Instance.ClearButtons()); 
+                    AttemptConnection(filteredButtons.IndexOf(nextButton));
                 };
                 ScrollView.AddButton(nextButton);
                 filteredButtons.Add(nextButton);
@@ -244,6 +454,20 @@ namespace NetRadio
                 connectIcon.sprite = ConnectingSprites[0];
                 connectIcon.enabled = false; 
             }
+        }
+
+        public void AttemptConnection(int index) {
+            musicPlayerWasInterrupted = musicPlayer.IsPlaying;
+            if (musicPlayerWasInterrupted) { musicPlayerInterruptSamples = musicPlayer.CurrentTrackSamples; }
+            globalRadioWasInterrupted = GlobalRadio.playing && !GlobalRadio.failedToLoad;
+
+            musicPlayer.ForcePaused();
+            GlobalRadio.Play(index); //NetRadioPlugin.GlobalRadio.streamURLs.IndexOf(urlLabels[i].text));//(nextButton.Label.text));
+            
+            mediaFoundationReader.Position = 0;
+            playing = true;
+            waveOut.Play();
+            StartCoroutine(Instance.ClearButtons()); 
         }
 
         private IEnumerator ClearButtons() {
@@ -311,11 +535,12 @@ namespace NetRadio
             if (ScrollView.Buttons.Any()) {
                 if (ScrollView.SelectedIndex >= 0) {
                     if (IsHeaderButton((SimplePhoneButton)ScrollView.Buttons[ScrollView.SelectedIndex])) {
+                        m_AudioManager.audioSources[3].Stop();
                         int indexOfLastButton = ScrollView.Buttons.IndexOf(lastSelectedButton);
                         if (indexOfLastButton > ScrollView.SelectedIndex) { // 
-                            ScrollView.ScrollUp();
+                            ScrollView.OnPressUp();
                         } else {
-                            ScrollView.ScrollDown();
+                            ScrollView.OnPressDown();
                         }
                     }
                     lastSelectedButton = ScrollView.Buttons[ScrollView.SelectedIndex];
@@ -437,6 +662,7 @@ namespace NetRadio
 
         public override void OnAppDisable()
         {
+            loaded = false;
             if (connectIcon != null) {
                 Destroy(connectIcon.gameObject);
                 connectIcon = null; 
@@ -447,17 +673,18 @@ namespace NetRadio
 
         public override void OnAppInit()
         {
+            loaded = false;
             base.OnAppInit();
             CreateTitleBar(appName, IconSprite);//CreateIconlessTitleBar(appName);
             ScrollView = PhoneScrollView.Create(this);
         }   
 
-        private static SimplePhoneButton CreateSimpleButton(string label) {
+        public static SimplePhoneButton CreateSimpleButton(string label) {
             //normalButtonIndexOffset++; 
             return PhoneUIUtility.CreateSimpleButton(label); 
         }
 
-        private static SimplePhoneButton CreateHeaderButton(string label) {
+        public static SimplePhoneButton CreateHeaderButton(string label) {
             runPrefix = false;
             var button = PhoneUIUtility.CreateSimpleButton(label);
             var titleLabel = button.Label;
@@ -475,7 +702,7 @@ namespace NetRadio
             var button = PhoneUIUtility.CreateSimpleButton(label); 
             var buttonAnimationParent = button.gameObject.transform.Find("Animation Parent");
 
-            url = url.Replace("https://", "").Replace("http://", "").Replace("www.", "").Trim();
+            url = StandardizeURL(url); //url.Replace("https://", "").Replace("http://", "").Replace("www.", "").Trim();
             url += "        ";
 
             var labelGO = new GameObject("URLLabel");
@@ -527,18 +754,6 @@ namespace NetRadio
 
             runPrefix = true;
             return button;
-        }
-
-        public static bool IsStationButton(SimplePhoneButton button) {
-            if (button == null || button.Label == null) { return false; }
-            int childCount = button.Label.gameObject.transform.childCount;
-            bool textMatches = button.Label.text.Contains("Custom Station") || button.Label.text == PluginName || NetRadioSettings.streamTitles.Contains(button.Label.text);
-            return childCount > 2 && textMatches;
-        }
-
-        public static bool IsHeaderButton(SimplePhoneButton button) {
-            if (button == null || button.Label == null) { return false; }
-            return button.Label.gameObject.transform.GetChild(0).gameObject.name.Contains("Header");
         }
     }
 }

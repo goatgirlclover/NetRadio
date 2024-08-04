@@ -93,8 +93,9 @@ namespace NetRadio {
         public static void StartupRadio() {
             if (NetRadio.gameStarted) { return; }
             NetRadio.gameStarted = true;
-            NetRadioPlugin.Instance.StartCoroutine(NetRadio.MuteUntilRadioPlaying());
+
             if (NetRadioSettings.playOnStartup.Value) {
+                NetRadioPlugin.Instance.StartCoroutine(NetRadio.MuteUntilRadioPlaying());
                 if (NetRadioSettings.startupIndex.Value == -1) { NetRadio.GlobalRadio.PlayRandomStation(); }
                 else { NetRadio.GlobalRadio.PlayRadioStation(NetRadioSettings.startupIndex.Value); }
             }
@@ -112,11 +113,11 @@ namespace NetRadio {
         }
 
         public static void Postfix(SimplePhoneButton __instance) {
-            if (player.phone.m_CurrentApp is AppNetRadio && AppNetRadio.runPrefix) {
-                if (AppNetRadio.IsHeaderButton(__instance)) {
+            if ((player.phone.m_CurrentApp is AppNetRadio && AppNetRadio.runPrefix) || player.phone.m_CurrentApp is AppSelectedStation) {
+                if (NetRadio.IsHeaderButton(__instance)) {
                     __instance.ButtonImage.sprite = AppNetRadio.BlankButtonSprite;
                 }
-                if (!AppNetRadio.IsStationButton(__instance)) { return; }
+                if (!NetRadio.IsStationButton(__instance)) { return; }
                 var currentSprite = __instance.ButtonImage.sprite;
                 bool selected = currentSprite == __instance.SelectedButtonSprite;
 

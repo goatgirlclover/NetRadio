@@ -89,7 +89,10 @@ namespace NetRadio
 
         private void Start() { 
             Log.LogInfo("Loaded radio manager");
-            if (GlobalRadio == this) { NetRadioSettings.LoadURLs(); }
+            if (GlobalRadio == this) { 
+                NetRadioSettings.LoadURLs(); 
+                new NetRadioSaveData();
+            }
         }
 
         void Update() {

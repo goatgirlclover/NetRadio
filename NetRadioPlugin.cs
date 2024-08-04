@@ -45,6 +45,7 @@ namespace NetRadio
             NetRadio.GlobalRadio.volume = 1.0f;
             
             AppNetRadio.Initialize();
+            AppSelectedStation.Initialize();
             NetRadioSettings.BindSettings(Config);
             //NetRadioSettings.LoadURLs(); // moved to global radiomanager start    
 
@@ -64,7 +65,9 @@ namespace NetRadio
         private void Update() {
             if (NetRadio.GlobalRadio is NetRadioManager) {
                 if (NetRadio.GlobalRadio.playing) {
-                    NetRadio.GlobalRadio.radioVolume = NetRadio.radioMusicVolume;
+                    string urlForCurrent = NetRadio.StandardizeURL(NetRadio.GlobalRadio.currentStationURL);
+                    float volumeMultiplier = NetRadioSaveData.stationVolumesByURL.ContainsKey(urlForCurrent) ? (float)NetRadioSaveData.stationVolumesByURL[urlForCurrent] : 1f;
+                    NetRadio.GlobalRadio.radioVolume = NetRadio.radioMusicVolume * volumeMultiplier;
                     if (NetRadio.musicPlayer.IsPlaying) { NetRadio.musicPlayer.ForcePaused(); }
                 }
 
