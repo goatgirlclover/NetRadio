@@ -13,8 +13,6 @@ using System.Linq;
 using System.Reflection;
 using System.IO;
 using CommonAPI;
-using NAudio.Wave;
-using NAudio.Wave.SampleProviders;
 
 namespace NetRadio
 {

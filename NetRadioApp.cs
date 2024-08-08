@@ -13,8 +13,6 @@ using System.Threading.Tasks;
 using CommonAPI;
 using CommonAPI.Phone;
 using CommonAPI.UI;
-using NAudio.Wave;
-using NAudio.Wave.SampleProviders;
 using TMPro;
 using static NetRadio.NetRadio;
 
@@ -274,9 +272,9 @@ namespace NetRadio
         public static bool playing = false;
         public static bool runPrefix = true;
         
-        private static MediaFoundationReader mediaFoundationReader;
+        /* private static MediaFoundationReader mediaFoundationReader;
         public static WaveOutEvent waveOut;
-        private static VolumeSampleProvider volumeSampleProvider;
+        private static VolumeSampleProvider volumeSampleProvider; */
 
         public static Sprite SelectedButtonSprite;
         public static Sprite UnselectedButtonSprite;
@@ -328,10 +326,10 @@ namespace NetRadio
             IconSprite = LoadSprite(Path.Combine(dataDirectory, "icon.png")); 
             PhoneAPI.RegisterApp<AppNetRadio>(appName, IconSprite); 
 
-            mediaFoundationReader = new MediaFoundationReader(Path.Combine(dataDirectory, "Tuning.mp3"));
-            volumeSampleProvider = new VolumeSampleProvider(mediaFoundationReader.ToSampleProvider());
-            waveOut = new WaveOutEvent();
-            waveOut.Init(volumeSampleProvider);
+            //mediaFoundationReader = new MediaFoundationReader(Path.Combine(dataDirectory, "Tuning.mp3"));
+            //volumeSampleProvider = new VolumeSampleProvider(mediaFoundationReader.ToSampleProvider());
+            //waveOut = new WaveOutEvent();
+            //waveOut.Init(volumeSampleProvider);
 
             SelectedButtonSprite = LoadSprite(Path.Combine(dataDirectory, "SimpleButton-Selected.png"));
             UnselectedButtonSprite = LoadSprite(Path.Combine(dataDirectory, "SimpleButton.png"));
@@ -472,9 +470,9 @@ namespace NetRadio
             musicPlayer.ForcePaused();
             GlobalRadio.Play(index); //NetRadioPlugin.GlobalRadio.streamURLs.IndexOf(urlLabels[i].text));//(nextButton.Label.text));
             
-            mediaFoundationReader.Position = 0;
+            //mediaFoundationReader.Position = 0;
             playing = true;
-            waveOut.Play();
+            //waveOut.Play();
             StartCoroutine(Instance.ClearButtons()); 
         }
 
@@ -509,12 +507,12 @@ namespace NetRadio
         public IEnumerator StopIn(float sec) {
             playing = false;
             yield return new WaitForSeconds(sec);
-            waveOut.Stop();
+            //waveOut.Stop();
         }
 
         public IEnumerator HandleFailedConnection() {
             playing = false;
-            waveOut.Stop();
+            //waveOut.Stop();
 
             if (overlayInstance != null) {
                 Destroy(overlayInstance.gameObject);
@@ -573,9 +571,9 @@ namespace NetRadio
                 }
             }
             
-            if (volumeSampleProvider != null) { //if (waveOut.PlaybackState == PlaybackState.Playing) {
+            /* if (volumeSampleProvider != null) { //if (waveOut.PlaybackState == PlaybackState.Playing) {
                 volumeSampleProvider.Volume = radioMusicVolume;
-            }
+            } */
 
             realTime += Time.deltaTime;
 

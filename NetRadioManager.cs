@@ -13,11 +13,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.IO;
 using CommonAPI;
-using NAudio.Wave;
-using NAudio.Wave.SampleProviders;
-using NAudio.CoreAudioApi.Interfaces;
-using NAudio.MediaFoundation;
-using NAudio.Utils;
+//using NAudio.Wave;
+//using NAudio.Wave.SampleProviders;
+//using NAudio.CoreAudioApi.Interfaces;
+//using NAudio.MediaFoundation;
+//using NAudio.Utils;
 //using NAudio.Vorbis;
 using System.Text.RegularExpressions;
 using static NetRadio.NetRadio;
@@ -29,21 +29,6 @@ namespace NetRadio
         public List<string> streamURLs = new List<string> {}; /*
             "https://stream2.magic-media.nl:1100/stream",
         }; */
-
-        public MediaFoundationReader mediaFoundationReader;
-        public WaveOutEvent waveOut;
-        public VolumeSampleProvider volumeSampleProvider;
-
-        /*public VorbisWaveReader vorbisReader;
-        public VorbisWaveReader vorbisReaderMono;*/
-
-        // for spatial audio emulation
-        public MediaFoundationReader mediaFoundationReaderMono;
-        public WaveOutEvent waveOutMono;
-        public ISampleProvider centerSampleProvider;
-        public VolumeSampleProvider monoSampleProvider; 
-        public VolumeSampleProvider monoVolumeSampleProvider; 
-        public PanningSampleProvider pannedMonoSampleProvider; 
         
         public float minDistance = 0.5f;
         public float maxDistance = 10f;
@@ -110,11 +95,7 @@ namespace NetRadio
             if (playURLThread != null) { playURLThread.Abort(); }
             if (playURLChildThread != null) { playURLChildThread.Abort(); }
             trackingMetadata = false;
-            if (waveOut != null) { waveOut.Dispose(); }
-            if (waveOutMono != null) { waveOutMono.Dispose(); }
-            if (mediaFoundationReader != null) { mediaFoundationReader.Dispose(); }
-            if (mediaFoundationReaderMono != null) { mediaFoundationReaderMono.Dispose(); }
-            //if (volumeSampleProvider != null) { volumeSampleProvider.Dispose(); }
+            // dispose of cscore audio variables
         }
 
         public void Play(int streamIndex = -999) { 
@@ -182,7 +163,7 @@ namespace NetRadio
             }
         }
 
-        private void PlayURL() {
+        /* private void PlayURL() {
             try {
                 MediaFoundationReader.MediaFoundationReaderSettings mediaFoundationReaderSettings = new MediaFoundationReader.MediaFoundationReaderSettings() {
                     RepositionInRead = true,
@@ -297,8 +278,7 @@ namespace NetRadio
             trackingMetadata = false;
             currentMetadata = "";
             currentSong = "Unknown Track";
-            if (waveOut != null) { waveOut.Stop(); }
-            if (waveOutMono != null) { waveOutMono.Stop(); }
+            // stop cscore audioout
         }
 
         public String GetStationTitle(int streamIndex = -999) {
@@ -429,7 +409,7 @@ namespace NetRadio
             GlobalRadio.volume = 1 - (volume*multiplier);
         }
 
-        public float GetSpatialPanning(Camera cam, GameObject audioEmitter)
+        /* public float GetSpatialPanning(Camera cam, GameObject audioEmitter)
         {
             if (cam == null || audioEmitter == null) { return pan; }
 
@@ -461,7 +441,7 @@ namespace NetRadio
                 if (this.centerSampleProvider is VolumeSampleProvider) { (this.centerSampleProvider as VolumeSampleProvider).Volume = 1f - Mathf.Abs(pan); }
                 this.monoSampleProvider.Volume = Mathf.Abs(pan);
             }
-        }
+        } */
 
         // EXPERIMENTAL
         public static NetRadioManager CreateRadio(Transform parent, bool playNow = true, bool spatialize = true, List<string> clipURL = null) {
@@ -471,7 +451,7 @@ namespace NetRadio
             NetRadioManager.spatialize = spatialize; 
             NetRadioManager.gameObject.transform.position = parent.transform.position;
             if (clipURL != null) { NetRadioManager.streamURLs = clipURL; }
-            if (playNow) { NetRadioManager.PlayRadioStation(0); }
+            if (playNow && !NetRadioManager.streamURLs.IsNullOrWhiteSpace()) { NetRadioManager.PlayRadioStation(0); }
             return NetRadioManager;
         }
     }

@@ -17,8 +17,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.IO;
 using System.Net.Http;
-using NAudio.Wave;
-using NAudio.Wave.SampleProviders;
 using CommonAPI;
 using CommonAPI.Phone;
 using CommonAPI.UI;
