@@ -13,6 +13,11 @@ using System.Threading.Tasks;
 using CommonAPI;
 using CommonAPI.Phone;
 using CommonAPI.UI;
+using CSCore; 
+using CSCore.Streams; 
+using CSCore.Streams.SampleConverter;
+using CSCore.Ffmpeg; 
+using CSCore.SoundOut; 
 using TMPro;
 using static NetRadio.NetRadio;
 
@@ -272,9 +277,9 @@ namespace NetRadio
         public static bool playing = false;
         public static bool runPrefix = true;
         
-        /* private static MediaFoundationReader mediaFoundationReader;
-        public static WaveOutEvent waveOut;
-        private static VolumeSampleProvider volumeSampleProvider; */
+        private static FfmpegDecoder ffmpegReader;
+        public static WaveOut waveOut;
+        private static VolumeSource volumeSource; 
 
         public static Sprite SelectedButtonSprite;
         public static Sprite UnselectedButtonSprite;
@@ -326,10 +331,10 @@ namespace NetRadio
             IconSprite = LoadSprite(Path.Combine(dataDirectory, "icon.png")); 
             PhoneAPI.RegisterApp<AppNetRadio>(appName, IconSprite); 
 
-            //mediaFoundationReader = new MediaFoundationReader(Path.Combine(dataDirectory, "Tuning.mp3"));
-            //volumeSampleProvider = new VolumeSampleProvider(mediaFoundationReader.ToSampleProvider());
-            //waveOut = new WaveOutEvent();
-            //waveOut.Init(volumeSampleProvider);
+            ffmpegReader = new FfmpegDecoder(Path.Combine(dataDirectory, "Tuning.mp3"));
+            volumeSource = new VolumeSource(WaveToSampleBase.CreateConverter(ffmpegReader));
+            waveOut = new WaveOut(NetRadio.waveOutLatency);
+            waveOut.Initialize(new SampleToIeeeFloat32(volumeSource));
 
             SelectedButtonSprite = LoadSprite(Path.Combine(dataDirectory, "SimpleButton-Selected.png"));
             UnselectedButtonSprite = LoadSprite(Path.Combine(dataDirectory, "SimpleButton.png"));
@@ -470,9 +475,9 @@ namespace NetRadio
             musicPlayer.ForcePaused();
             GlobalRadio.Play(index); //NetRadioPlugin.GlobalRadio.streamURLs.IndexOf(urlLabels[i].text));//(nextButton.Label.text));
             
-            //mediaFoundationReader.Position = 0;
+            ffmpegReader.Position = 0;
             playing = true;
-            //waveOut.Play();
+            waveOut.Play();
             StartCoroutine(Instance.ClearButtons()); 
         }
 
@@ -501,18 +506,18 @@ namespace NetRadio
                 overlayInstance = null; 
             }
             justCleared = false;
-            //waveOut.Stop(); playing = false; 
+            waveOut.Stop(); playing = false; 
         }
 
         public IEnumerator StopIn(float sec) {
             playing = false;
             yield return new WaitForSeconds(sec);
-            //waveOut.Stop();
+            waveOut.Stop();
         }
 
         public IEnumerator HandleFailedConnection() {
             playing = false;
-            //waveOut.Stop();
+            waveOut.Stop();
 
             if (overlayInstance != null) {
                 Destroy(overlayInstance.gameObject);
@@ -571,9 +576,9 @@ namespace NetRadio
                 }
             }
             
-            /* if (volumeSampleProvider != null) { //if (waveOut.PlaybackState == PlaybackState.Playing) {
-                volumeSampleProvider.Volume = radioMusicVolume;
-            } */
+            if (volumeSource != null) { //if (waveOut.PlaybackState == PlaybackState.Playing) {
+                volumeSource.Volume = radioMusicVolume;
+            } 
 
             realTime += Time.deltaTime;
 

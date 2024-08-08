@@ -48,6 +48,8 @@ namespace NetRadio
         public static Color LabelSelectedColorDefault = new Color32(49, 90, 165, 255);
         public static Color LabelUnselectedColorDefault = Color.white;
 
+        public static int waveOutLatency = 50;
+
         public static bool PlayerUsingMusicApp() {
             if (player == null || player.phone == null)  { return false; }
             return (player.phone.m_CurrentApp is AppMusicPlayer && player.phone.IsOn && player.phoneLayerWeight >= 1f);

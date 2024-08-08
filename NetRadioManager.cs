@@ -12,14 +12,22 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using System.IO;
+using System.Text.RegularExpressions;
 using CommonAPI;
+
 //using NAudio.Wave;
 //using NAudio.Wave.SampleProviders;
 //using NAudio.CoreAudioApi.Interfaces;
 //using NAudio.MediaFoundation;
 //using NAudio.Utils;
 //using NAudio.Vorbis;
-using System.Text.RegularExpressions;
+
+using CSCore; 
+using CSCore.Streams; 
+using CSCore.Streams.SampleConverter;
+using CSCore.Ffmpeg; 
+using CSCore.SoundOut; 
+
 using static NetRadio.NetRadio;
 
 namespace NetRadio
@@ -29,28 +37,36 @@ namespace NetRadio
         public List<string> streamURLs = new List<string> {}; /*
             "https://stream2.magic-media.nl:1100/stream",
         }; */
-        
+
+        public FfmpegDecoder ffmpegReader;
+        public WaveOut waveOut;
+        public VolumeSource volumeSource;
+
+        /*public VorbisWaveReader vorbisReader;
+        public VorbisWaveReader vorbisReaderMono;*/
+
+        // for spatial audio emulation
+        public FfmpegDecoder ffmpegReaderMono;
+        public WaveOut waveOutMono;
+        public SampleAggregatorBase centerSource;
+        public VolumeSource monoSource; 
+        public VolumeSource monoVolumeSource; 
+        public PanSource pannedMonoSource; 
+
+        public PeakMeter meter;
+        public float streamSampleVolume { get; private set; } = 0f; //{ get { return meter.StreamVolume; }}
+
+        public bool spatialize = true;
         public float minDistance = 0.5f;
         public float maxDistance = 10f;
 
-        public MeteringSampleProvider meter;
-        public float streamSampleVolume { get; private set; } = 0f; //{ get { return meter.StreamVolume; }}
-
-        // for audio effects (https://github.com/gregyjames/SlowReverbMaker)
-        //private ReverbEffect reverbSampleProvider;
-        //private EchoSampleProvider echoSampleProvider;
-        //private BoostFreqSampleProvider boostSampleProvider;
-        //private FilterProvider filterProvider;
-
-        public bool spatialize = true;
-
-        public float radioVolume { get { return volumeSampleProvider != null ? volumeSampleProvider.Volume : 0f; } 
+        public float radioVolume { get { return volumeSource != null ? volumeSource.Volume : 0f; } 
         set { 
-            if (volumeSampleProvider != null) { volumeSampleProvider.Volume = Mathf.Clamp01(value)*volume; }
-            if (monoVolumeSampleProvider != null) { monoVolumeSampleProvider.Volume = Mathf.Clamp01(value)*volume; }
+            if (volumeSource != null) { volumeSource.Volume = Mathf.Clamp01(value)*volume; }
+            if (monoVolumeSource != null) { monoVolumeSource.Volume = Mathf.Clamp01(value)*volume; }
         }}
 
-        public float volume = 0.9f; // base volume for radio. set to 1.0 for globalradio
+        public float volume = 1.0f; // base volume for radio. set to 1.0 for globalradio
 
         public bool playing { 
             get { return waveOut != null ? waveOut.PlaybackState == PlaybackState.Playing : false; } 
@@ -95,7 +111,22 @@ namespace NetRadio
             if (playURLThread != null) { playURLThread.Abort(); }
             if (playURLChildThread != null) { playURLChildThread.Abort(); }
             trackingMetadata = false;
-            // dispose of cscore audio variables
+            DisposeOfReaders();
+        }
+
+        private void DisposeOfReaders() {
+            try { if (ffmpegReader != null) { ffmpegReader.Dispose(); }
+            } catch (System.Exception ex) { Log.LogError(ex); }
+            ffmpegReader = null;
+            try { if (ffmpegReaderMono != null) { ffmpegReaderMono.Dispose(); }
+            } catch (System.Exception ex) { Log.LogError(ex); }
+            ffmpegReaderMono = null;
+            try { if (waveOut != null) { waveOut.Dispose(); }
+            } catch (System.Exception ex) { Log.LogError(ex); }
+            waveOut = null;
+            try { if (waveOutMono != null) { waveOutMono.Dispose(); }
+            } catch (System.Exception ex) { Log.LogError(ex); }
+            waveOutMono = null;
         }
 
         public void Play(int streamIndex = -999) { 
@@ -160,6 +191,72 @@ namespace NetRadio
             {    
                 failedToLoad = true;
                 playURLChildThread.Abort();
+            }
+        }
+
+        // NAUDIO TO CSCORE TRANSLATION
+        // using CSCore.Streams; using CSCore.Ffmpeg; using CSCore.SoundOut; using CSCore; using CSCore.Streams.SampleConverter;
+        // mediaFoundationReader = ffmpegReader (cross-platform, more format support)
+        // volumeSampleProvider = volumeSource
+        // waveprovider.ToSampleProvider() = WaveToSampleBase.CreateConverter(waveprovider)
+        // StereoToMonoSampleProvider = StereoToMonoSource
+        // PanningSampleProvider = PanSource
+        // MeteringSampleProvider = PeakMeter
+        // waveOut.Init() = waveOut.Initialize()
+        // waveout functions and variables seem identical 
+
+        private void PlayURL() {
+            if (spatialize) { return; } // not implemented yet, don't want to implement it yet
+            try {
+                DisposeOfReaders();
+
+                ffmpegReader = new FfmpegDecoder(currentStationURL);
+
+                meter = new PeakMeter(WaveToSampleBase.CreateConverter(ffmpegReader));
+                if (GlobalRadio == this) {
+                    meter.PeakCalculated += (s,e) => streamSampleVolume = meter.PeakValue;
+                    // Log.LogInfo(meter.PeakValue);
+                }
+
+                centerSource = new VolumeSource(meter);
+                // add audio effects?
+                volumeSource = new VolumeSource(centerSource);
+
+                if (spatialize) {
+                    ffmpegReaderMono = new FfmpegDecoder(currentStationURL);
+
+                    StereoToMonoSource stereoToMono = new StereoToMonoSource(WaveToSampleBase.CreateConverter(ffmpegReaderMono));
+                    monoSource = new VolumeSource(stereoToMono); // panning volume
+                    monoVolumeSource = new VolumeSource(monoSource); // radio volume
+                    pannedMonoSource = new PanSource(monoVolumeSource);
+                    
+                    radioVolume = 0f;
+                    waveOutMono = new WaveOut(NetRadio.waveOutLatency);
+                    waveOutMono.Initialize(new SampleToIeeeFloat32(pannedMonoSource));
+                }
+
+                waveOut = new WaveOut(NetRadio.waveOutLatency);
+                waveOut.Initialize(new SampleToIeeeFloat32(volumeSource));
+                NetRadioPlugin.UpdateGlobalRadioVolume();
+                waveOut.Play();
+                if (waveOutMono != null) { waveOutMono.Play(); }
+            } 
+            catch (System.Exception exception) { 
+                if (currentStationURL.StartsWith("http://")) {
+                    streamURLs[currentStation] = currentStationURL.Replace("http://", "https://");
+                    PlayURL();
+                    return;
+                }
+
+                failedToLoad = true;
+                Log.LogError($"Error playing radio: {exception.Message}"); 
+                Log.LogError(exception.StackTrace); 
+                //currentStation = -1;
+            }
+
+            if (GlobalRadio == this && !spatialize && !failedToLoad) {
+                // metadata on separate connection, so let them run together
+                _= TrackMetadata(); //StartCoroutine(metadataCoroutine);
             }
         }
 
@@ -278,7 +375,8 @@ namespace NetRadio
             trackingMetadata = false;
             currentMetadata = "";
             currentSong = "Unknown Track";
-            // stop cscore audioout
+            if (waveOut != null) { waveOut.Stop(); }
+            if (waveOutMono != null) { waveOutMono.Stop(); } 
         }
 
         public String GetStationTitle(int streamIndex = -999) {
@@ -409,7 +507,7 @@ namespace NetRadio
             GlobalRadio.volume = 1 - (volume*multiplier);
         }
 
-        /* public float GetSpatialPanning(Camera cam, GameObject audioEmitter)
+        public float GetSpatialPanning(Camera cam, GameObject audioEmitter)
         {
             if (cam == null || audioEmitter == null) { return pan; }
 
@@ -436,12 +534,12 @@ namespace NetRadio
 
         private void SetPan(float value) {
             pan = Mathf.Lerp(pan, value, 0.2f); // smoothing to account for sudden changes / occasional weird behavior
-            if (this.pannedMonoSampleProvider != null && this.centerSampleProvider != null && this.monoSampleProvider != null) {
-                this.pannedMonoSampleProvider.Pan = Mathf.Sign(pan); //= value; 
-                if (this.centerSampleProvider is VolumeSampleProvider) { (this.centerSampleProvider as VolumeSampleProvider).Volume = 1f - Mathf.Abs(pan); }
-                this.monoSampleProvider.Volume = Mathf.Abs(pan);
+            if (this.pannedMonoSource != null && this.centerSource != null && this.monoSource != null) {
+                this.pannedMonoSource.Pan = Mathf.Sign(pan); //= value; 
+                if (this.centerSource is VolumeSource) { (this.centerSource as VolumeSource).Volume = 1f - Mathf.Abs(pan); }
+                this.monoSource.Volume = Mathf.Abs(pan);
             }
-        } */
+        } 
 
         // EXPERIMENTAL
         public static NetRadioManager CreateRadio(Transform parent, bool playNow = true, bool spatialize = true, List<string> clipURL = null) {
@@ -451,7 +549,7 @@ namespace NetRadio
             NetRadioManager.spatialize = spatialize; 
             NetRadioManager.gameObject.transform.position = parent.transform.position;
             if (clipURL != null) { NetRadioManager.streamURLs = clipURL; }
-            if (playNow && !NetRadioManager.streamURLs.IsNullOrWhiteSpace()) { NetRadioManager.PlayRadioStation(0); }
+            if (playNow && NetRadioManager.streamURLs != null && NetRadioManager.streamURLs.Any()) { NetRadioManager.PlayRadioStation(0); }
             return NetRadioManager;
         }
     }
