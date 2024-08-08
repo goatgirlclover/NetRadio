@@ -79,6 +79,7 @@ namespace NetRadio
 
         public static float time = 0.0f;
         public static bool justCopied = false;
+        public static bool justFailedCopy = false;
         
         public static int volumeInPercent = 100;
         public static bool changingVolume = false;
@@ -131,9 +132,15 @@ namespace NetRadio
 
             nextButton = PhoneUIUtility.CreateSimpleButton("Copy URL to clipboard");
             nextButton.OnConfirm += () => {
-                System.Windows.Forms.Clipboard.SetText(GlobalRadio.streamURLs[currentStationIndex]);
                 time = 0.0f;
-                justCopied = true;
+                try { 
+                    GUIUtility.systemCopyBuffer = GlobalRadio.streamURLs[currentStationIndex]; 
+                    justCopied = true;
+                } catch (System.Exception ex) { 
+                    Log.LogError($"Error copying to clipboard: {ex.Message}"); 
+                    Log.LogError(ex.StackTrace); 
+                    justFailedCopy = true;
+                }
             };
             ScrollView.AddButton(nextButton);
         }
@@ -177,14 +184,15 @@ namespace NetRadio
                         string nowPlaying = GlobalRadio.playing ? GlobalRadio.currentSong : musicPlayerTrack;
                         button.Label.text = "Now playing " + nowPlaying;
                         button.Label.alignment = TextAlignmentOptions.Center;
+                        button.ButtonImage.gameObject.RectTransform().sizeDelta = new Vector2(530f * 2f, button.Label.fontSize*button.Label.textInfo.lineCount - 10f);
                     }
                     button.PlayDeselectAnimation(true);
                 } else if (button.Label.text.Contains("Volume:")) {
                     button.Label.text = "Volume: " + volumeInPercent + "%"; 
                     SetLabelColor(button, changingVolume ? Color.green : Color.clear);
                 } else if (button.Label.text.Contains("clipboard")) {
-                    button.Label.text = justCopied ? "Copied to clipboard!" : "Copy URL to clipboard";
-                    SetLabelColor(button, justCopied ? Color.green : Color.clear);
+                    button.Label.text = justFailedCopy ? "Copy to clipboard failed!" : (justCopied ? "Copied to clipboard!" : "Copy URL to clipboard");
+                    SetLabelColor(button, justFailedCopy ? Color.red : (justCopied ? Color.green : Color.clear));
                 }
             }
 
@@ -551,7 +559,7 @@ namespace NetRadio
         public override void OnAppLateUpdate() {
             if (connectIcon != null) { connectIcon.enabled = !ScrollView.Buttons.Any(); }
             if (!ScrollView.Buttons.Any()) {
-                realTime += Time.deltaTime;
+                //realTime += Time.deltaTime;
                 if (!GlobalRadio.threadRunning && !justCleared && !GlobalRadio.failedToLoad) {
                     StartCoroutine(Instance.RestoreButtons()); 
                     justCleared = true;
@@ -568,7 +576,9 @@ namespace NetRadio
             if (volumeSampleProvider != null) { //if (waveOut.PlaybackState == PlaybackState.Playing) {
                 volumeSampleProvider.Volume = radioMusicVolume;
             }
-            
+
+            realTime += Time.deltaTime;
+
             foreach (SimplePhoneButton button in ScrollView.Buttons) {
                 if (!IsStationButton(button)) { 
                     filteredButtons.Remove(button);
@@ -578,6 +588,7 @@ namespace NetRadio
                             string nowPlaying = GlobalRadio.playing ? GlobalRadio.currentSong : musicPlayerTrack;
                             button.Label.text = "Now playing " + nowPlaying;
                             button.Label.alignment = TextAlignmentOptions.Center;
+                            button.ButtonImage.gameObject.RectTransform().sizeDelta = new Vector2(530f * 2f, button.Label.fontSize*button.Label.textInfo.lineCount - 10f);
                         }
                         button.PlayDeselectAnimation(true);
                         //button.AnimationParent.transform.localPosition = new Vector3 (0f, button.gameObject.transform.localPosition.y, 0f); 
@@ -586,7 +597,7 @@ namespace NetRadio
 
                     if (ScrollView.Buttons.IndexOf(button) == ScrollView.SelectedIndex) {
                         time += Time.deltaTime;
-                        realTime += Time.deltaTime;
+                        //realTime += Time.deltaTime;
                     } if (button.ButtonImage.sprite.texture.wrapMode != TextureWrapMode.Clamp) { 
                         button.ButtonImage.sprite.texture.wrapMode = TextureWrapMode.Clamp; 
                     } 
@@ -609,7 +620,6 @@ namespace NetRadio
                 //foreach (TextMeshProUGUI child in button.Label.GetComponentsInChildren<TextMeshProUGUI>()) { if (child != button.Label && child.name.Contains("URL")) { urlLabel = child; } }
                 if (selected && urlIsTooLong[buttonIndex]) {
                     time += Time.deltaTime;
-                    realTime += Time.deltaTime;
                     if (time > 0.3f) {
                         time = 0f;
                         urlWrapOffsets[buttonIndex] += urlLabel.text.Substring(0,1) == " " ? 2 : 1;

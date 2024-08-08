@@ -55,6 +55,10 @@ namespace NetRadio
 
         public static void UpdateSettingsEvent(object sender, EventArgs args) {
             LoadURLs();
+            RefreshMusicApp();
+        }
+
+        public static void RefreshMusicApp() {
             if (NetRadio.player != null && NetRadio.player.phone != null)  { 
                 if (NetRadio.player.phone.m_CurrentApp is AppNetRadio && NetRadio.player.phone.IsOn && NetRadio.player.phoneLayerWeight >= 1f) {
                     AppNetRadio.Instance.ReloadButtons();
@@ -74,14 +78,15 @@ namespace NetRadio
 
                 string[] splitStation = station.Split(new [] { ")" }, StringSplitOptions.RemoveEmptyEntries);
                 string streamTitle = splitStation.Length > 1 ? splitStation[0].Split(new [] { "(" }, StringSplitOptions.None)[1] : NetRadio.PluginName;
-                string streamURL = splitStation.Length > 1 ? splitStation[1] : station;
+                string streamURL = splitStation.Length > 1 ? splitStation[1].Trim() : station.Trim();
 
                 if (!streamURL.StartsWith("https://") && !streamURL.StartsWith("http://")) {
+                    NetRadio.Log.LogInfo("adding HTTP to stream " + streamURL);
                     streamURL = "http://" + streamURL;
                 }
 
                 newStreams.Add(streamURL);
-                streamTitles.Add(streamTitle);
+                streamTitles.Add(streamTitle.Trim());
                 NetRadio.Log.LogInfo("Added stream " + streamURL);
             }
 
@@ -94,7 +99,7 @@ namespace NetRadio
         }
 
         public static List<string> SplitStringByCommas(string input) {
-            return input.Replace(",  ", ",").Replace(", ", ",").Split(new [] { "," }, StringSplitOptions.RemoveEmptyEntries).ToList();
+            return input.Replace("\n", "").Replace("\r", "").Replace("\t", "").Replace(",  ", ",").Replace(", ", ",").Split(new [] { "," }, StringSplitOptions.RemoveEmptyEntries).ToList();
         }
 
         public static KeyCode StringToKeyCode(string input) {

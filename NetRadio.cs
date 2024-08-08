@@ -6,13 +6,17 @@ using Reptile;
 using Reptile.Phone;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.Networking;
 using TMPro;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
 using System.IO;
+using System.Net.Http;
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
 using CommonAPI;
@@ -88,5 +92,34 @@ namespace NetRadio
             string shortURL = originalURL.Replace("https://", "").Replace("http://", "").Trim().ToLower().TrimEnd('/'); ///originalURL.Replace("https://", "").Replace("http://", "").Replace("www.", "").Trim();
             return shortURL;
         }
+
+        public static string ReadIcyHeader(HttpResponseMessage response, string header) {
+            string icyheader = header.StartsWith("icy-") ? header : "icy-" + header;
+            IEnumerable<string> headerValues;
+            if (response.Headers.TryGetValues(icyheader, out headerValues)) {
+                return headerValues.First();
+            }
+            return null;
+        }
+
+        /* public static void CheckInputLanguage() {
+            InputLanguage origIpl = InputLanguage.CurrentInputLanguage;
+            try { CultureInfo ci = origIpl.Culture; }
+            catch (ArgumentException) {
+                InputLanguage validIpl = null;
+                InputLanguage preferredIpl = null;
+                foreach (InputLanguage ipl in InputLanguage.InstalledInputLanguages) {
+                    try {
+                        CultureInfo ci = ipl.Culture;
+                        if (validIpl == null) { validIpl = ipl; }
+                        if (origIpl.LayoutName != ipl.LayoutName) { continue; }
+                        preferredIpl = ipl;
+                        break;
+                    } catch (ArgumentException) { continue; }
+                }
+                if (validIpl != null) { InputLanguage.CurrentInputLanguage = preferredIpl ?? validIpl; } 
+                else { Log.LogWarning("No valid input languages?"); }
+            }
+        } */
     }
 }

@@ -18,6 +18,7 @@ using NAudio.Wave.SampleProviders;
 using NAudio.CoreAudioApi.Interfaces;
 using NAudio.MediaFoundation;
 using NAudio.Utils;
+//using NAudio.Vorbis;
 using System.Text.RegularExpressions;
 using static NetRadio.NetRadio;
 
@@ -25,13 +26,16 @@ namespace NetRadio
 {
     public class NetRadioManager : MonoBehaviour
     {
-        public List<string> streamURLs = new List<string> {
+        public List<string> streamURLs = new List<string> {}; /*
             "https://stream2.magic-media.nl:1100/stream",
-        };
+        }; */
 
         public MediaFoundationReader mediaFoundationReader;
         public WaveOutEvent waveOut;
         public VolumeSampleProvider volumeSampleProvider;
+
+        /*public VorbisWaveReader vorbisReader;
+        public VorbisWaveReader vorbisReaderMono;*/
 
         // for spatial audio emulation
         public MediaFoundationReader mediaFoundationReaderMono;
@@ -75,6 +79,7 @@ namespace NetRadio
         public string currentStationURL { get { return streamURLs[currentStation]; }}
         
         public Thread playURLThread;
+        public Thread playURLChildThread;
         public bool useThread = true;
         public bool threadRunning { get { return playURLThread is Thread ? playURLThread.IsAlive : false; }}
         public bool failedToLoad = false;
@@ -103,6 +108,7 @@ namespace NetRadio
             //Instances.Remove(this);
             StopRadio();
             if (playURLThread != null) { playURLThread.Abort(); }
+            if (playURLChildThread != null) { playURLChildThread.Abort(); }
             trackingMetadata = false;
             if (waveOut != null) { waveOut.Dispose(); }
             if (waveOutMono != null) { waveOutMono.Dispose(); }
@@ -127,6 +133,8 @@ namespace NetRadio
         }
 
         public static void ReloadAllStations() { // backup option for fixing syncing issues 
+            NetRadioSettings.LoadURLs();
+            NetRadioSettings.RefreshMusicApp();
             foreach (NetRadioManager radioManager in Resources.FindObjectsOfTypeAll<NetRadioManager>()) { 
                 if (radioManager != null && radioManager.currentStation >= 0 && radioManager.waveOut.PlaybackState != PlaybackState.Stopped) { 
                     radioManager.PlayRadioStation(radioManager.currentStation); 
@@ -146,7 +154,10 @@ namespace NetRadio
                 failedToLoad = true;
             } else {
                 if (playURLThread is Thread) {
-                    if (playURLThread.IsAlive) { playURLThread.Join(); }
+                    if (playURLThread.IsAlive) { 
+                        playURLThread.Join(); 
+                        playURLChildThread.Join();
+                    }
                 }
                 
                 StopRadio();
@@ -155,9 +166,19 @@ namespace NetRadio
                 currentStation = streamIndex;
 
                 if (useThread && !NetRadioSettings.noThreads.Value) { // no freeze
-                    playURLThread = new Thread(new ThreadStart(PlayURL));
+                    playURLThread = new Thread(new ThreadStart(StartPlayURL));
                     playURLThread.Start();
                 } else { PlayURL(); } // yes freeze
+            }
+        }
+
+        private void StartPlayURL() {
+            playURLChildThread = new Thread(new ThreadStart(PlayURL));
+            playURLChildThread.Start();
+            if (!playURLChildThread.Join(new TimeSpan(0, 0, 11)))
+            {    
+                failedToLoad = true;
+                playURLChildThread.Abort();
             }
         }
 
@@ -216,6 +237,59 @@ namespace NetRadio
             }
         }
 
+        /* private async void PlayVorbis() {
+            try {
+                m_httpClient.DefaultRequestHeaders.Add("Icy-MetaData", "1");
+                var response = await m_httpClient.GetAsync(currentStationURL, System.Net.Http.HttpCompletionOption.ResponseHeadersRead);
+                m_httpClient.DefaultRequestHeaders.Remove("Icy-MetaData");
+                using (var streamResponse = await response.Content.ReadAsStreamAsync()) {
+                    vorbisReader = new VorbisWaveReader(streamResponse);
+
+                    meter = new MeteringSampleProvider(vorbisReader.ToSampleProvider(), 1024);
+                    if (GlobalRadio == this) {
+                        meter.StreamVolume += (s,e) => streamSampleVolume = 0.5f*(e.MaxSampleValues[0] + e.MaxSampleValues[1]); //Console.WriteLine("{0} - {1}", e.MaxSampleValues[0],e.MaxSampleValues[1]);
+                    }
+                    
+                    centerSampleProvider = new VolumeSampleProvider(meter); //spatialize ? new VolumeSampleProvider(meter) : meter;
+                    // add audio effects?
+                    volumeSampleProvider = new VolumeSampleProvider(centerSampleProvider);
+
+                    if (spatialize) {
+                        vorbisReaderMono = new VorbisWaveReader(streamResponse);
+
+                        StereoToMonoSampleProvider stereoToMono = new StereoToMonoSampleProvider(vorbisReaderMono.ToSampleProvider());
+                        monoSampleProvider = new VolumeSampleProvider(stereoToMono); // panning volume
+                        monoVolumeSampleProvider = new VolumeSampleProvider(monoSampleProvider); // radio volume
+                        pannedMonoSampleProvider = new PanningSampleProvider(monoVolumeSampleProvider);
+                        
+                        radioVolume = 0f;
+                        waveOutMono = new WaveOutEvent();
+                        waveOutMono.Init(pannedMonoSampleProvider);
+                    } 
+
+                    waveOut = new WaveOutEvent();
+                    waveOut.Init(volumeSampleProvider);
+                    
+                    waveOut.Play();
+                    if (waveOutMono != null) { waveOutMono.Play(); }
+                }
+                
+            }
+            catch (System.Exception exception) { 
+                Log.LogError($"Error playing radio: {exception.Message}"); 
+                Log.LogError(exception.StackTrace); 
+
+                Log.LogWarning("Vorbis player failed! Switching to MediaFoundation player");
+                PlayURL();
+                return;
+            }
+
+            if (GlobalRadio == this && !spatialize && !failedToLoad) {
+                // metadata on separate connection, so let them run together
+                _= TrackMetadata(); //StartCoroutine(metadataCoroutine);
+            }
+        } */
+
         public void StopRadio() {
             //trackingMetadata = false;
             //if (metadataCoroutine != null) {  //    StopCoroutine(metadataCoroutine);  //}
@@ -268,9 +342,10 @@ namespace NetRadio
 
         private void HandleMetadata(string originalMetadata) {
             string fallback = "Unknown Track";
-            if (!string.IsNullOrWhiteSpace(originalMetadata)) {
-                string[] splitMeta = originalMetadata.Split(new[]{ @"'" }, StringSplitOptions.RemoveEmptyEntries);
-                string simpleMetadata = splitMeta.Length > 2 ? splitMeta[1] : fallback; //originalMetadata; 
+            if (!string.IsNullOrWhiteSpace(originalMetadata) && originalMetadata.Contains(@"StreamTitle='") && !originalMetadata.Contains(@"StreamTitle=''")) {
+                /* string[] splitMeta = originalMetadata.Split(new[]{ @"'" }, StringSplitOptions.RemoveEmptyEntries);
+                string simpleMetadata = splitMeta.Length > 2 ? splitMeta[1] : fallback; //originalMetadata; */
+                string simpleMetadata = Regex.Match(originalMetadata, @"(?:StreamTitle=')(.*?)(?:')", RegexOptions.Singleline | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant).Groups[1].Value;
                 currentSong = simpleMetadata.Trim();
             } else { 
                 currentSong = fallback; 
@@ -296,28 +371,31 @@ namespace NetRadio
             m_httpClient.DefaultRequestHeaders.Remove("Icy-MetaData");
 
             if (response.IsSuccessStatusCode) {
-                IEnumerable<string> headerValues;
-                if (response.Headers.TryGetValues("icy-metaint", out headerValues)) {
-                    string metaIntString = headerValues.First();
-                    if (!string.IsNullOrEmpty(metaIntString)) {
-                        int metadataInterval = int.Parse(metaIntString);
-                        byte[] buffer = new byte[metadataInterval];
-                        using (var stream = await response.Content.ReadAsStreamAsync()) {
-                            int numBytesRead = 0;
-                            int numBytesToRead = metadataInterval;
-                            while (numBytesToRead > 0) {
-                                int n = stream.Read(buffer, numBytesRead, Mathf.Min(10, numBytesToRead));
-                                numBytesRead += n;
-                                numBytesToRead -= n;
-                            }
-
-                            int lengthOfMetaData = stream.ReadByte();
-                            int metaBytesToRead = lengthOfMetaData * 16;
-                            byte[] metadataBytes = new byte[metaBytesToRead];
-                            var bytesRead = await stream.ReadAsync(metadataBytes, 0, metaBytesToRead);
-                            string metaDataString = System.Text.Encoding.UTF8.GetString(metadataBytes);
-                            return metaDataString; //return finalMeta;
+                string stationName = ReadIcyHeader(response, "name");
+                string stationDesc = ReadIcyHeader(response, "description");
+                string stationGenre = ReadIcyHeader(response, "genre"); //ReadIcyHeaders(response, "genre").ToList();
+                string stationAudioInfo = ReadIcyHeader(response, "audio-info"); //ReadIcyHeaders(response, "audio-info").ToList(); */
+                
+                string metaIntString = ReadIcyHeader(response, "metaint");
+                if (!string.IsNullOrEmpty(metaIntString)) {
+                    int metadataInterval = int.Parse(metaIntString);
+                    byte[] buffer = new byte[metadataInterval];
+                    using (var stream = await response.Content.ReadAsStreamAsync()) {
+                        // Can we use this as an NAudio stream for playback? If so that'd simplify the code immensely
+                        int numBytesRead = 0;
+                        int numBytesToRead = metadataInterval;
+                        while (numBytesToRead > 0) {
+                            int n = stream.Read(buffer, numBytesRead, Mathf.Min(10, numBytesToRead));
+                            numBytesRead += n;
+                            numBytesToRead -= n;
                         }
+
+                        int lengthOfMetaData = stream.ReadByte();
+                        int metaBytesToRead = lengthOfMetaData * 16;
+                        byte[] metadataBytes = new byte[metaBytesToRead];
+                        var bytesRead = await stream.ReadAsync(metadataBytes, 0, metaBytesToRead);
+                        string metaDataString = System.Text.Encoding.UTF8.GetString(metadataBytes);
+                        return metaDataString; //return finalMeta;
                     }
                 }
             }

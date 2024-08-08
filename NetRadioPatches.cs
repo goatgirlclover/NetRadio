@@ -82,6 +82,7 @@ namespace NetRadio {
         [HarmonyPatch(nameof(BaseModule.LoadMainMenuScene))]
         [HarmonyPostfix]
         static void LoadingMenu_ResetVars() {
+            NetRadio.gameStarted = false;
             GlobalRadio.Stop();
         }
     }
@@ -98,6 +99,7 @@ namespace NetRadio {
                 NetRadioPlugin.Instance.StartCoroutine(NetRadio.MuteUntilRadioPlaying());
                 if (NetRadioSettings.startupIndex.Value == -1) { NetRadio.GlobalRadio.PlayRandomStation(); }
                 else { NetRadio.GlobalRadio.PlayRadioStation(NetRadioSettings.startupIndex.Value); }
+                //AppNetRadio.waveOut.Play();
             }
         }
     }
@@ -146,7 +148,7 @@ namespace NetRadio {
         [HarmonyPatch("SetSceneActive")]
 		private static void Postfix(string sceneToSetActive)
 		{
-            NetRadio.gameStarted = false;
+            //NetRadio.gameStarted = false;
             return; /*
 			Junk[] array = UnityEngine.Object.FindObjectsOfType<Junk>();
 			Junk[] array2 = array;
