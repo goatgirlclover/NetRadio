@@ -421,16 +421,16 @@ namespace NetRadio
                     float processingTime = Time.realtimeSinceStartup - realtimeAtStart;
                     if (currentMetadata != oldMetadata) {
                         metadataTimeOffset = connectionTime - processingTime;
-                        if (metadataTimeOffset >= NetRadio.waveOutLatency && metadataTimeOffset > 0 && looped) { 
+                        if (metadataTimeOffset > 0 && looped) { 
                             await Task.Delay((int)(metadataTimeOffset*1000)); 
                         }
                         HandleMetadata(currentMetadata); 
                         oldMetadata = currentMetadata;
+                        looped = true;
                     }
                 }  
                 //Log.LogInfo(currentMetadata);
                 await Task.Yield(); //yield return null;
-                looped = true;
             }
             trackingMetadata = false; // cts.Cancel();
         }
