@@ -44,6 +44,7 @@ namespace NetRadio
 
         /*public VorbisWaveReader vorbisReader;
         public VorbisWaveReader vorbisReaderMono;*/
+        public IWaveSource mediaFoundationReader;
 
         // for spatial audio emulation
         public FfmpegDecoder ffmpegReaderMono;
@@ -118,6 +119,9 @@ namespace NetRadio
         }
 
         private void DisposeOfReaders() {
+            try { if (mediaFoundationReader != null) { mediaFoundationReader.Dispose(); }
+            } catch (System.Exception ex) { Log.LogError(ex); }
+            mediaFoundationReader = null;
             try { if (ffmpegReader != null) { ffmpegReader.Dispose(); }
             } catch (System.Exception ex) { Log.LogError(ex); }
             ffmpegReader = null;
@@ -190,7 +194,8 @@ namespace NetRadio
         }
 
         private void StartPlayURL() {
-            playURLChildThread = new Thread(new ThreadStart(PlayURL));
+            var threadStart = NetRadioSettings.moreCodecs.Value ? new ThreadStart(PlayURLMF) : new ThreadStart(PlayURL);
+            playURLChildThread = new Thread(threadStart);
             playURLChildThread.Start();
             if (!playURLChildThread.Join(new TimeSpan(0, 0, 11)))
             {    
@@ -210,6 +215,57 @@ namespace NetRadio
         // waveOut.Init() = waveOut.Initialize()
         // waveout functions and variables seem identical 
 
+        private void PlayURLMF() {
+            if (spatialize) { 
+                PlayURL();
+                return;
+            }
+
+            try {
+                DisposeOfReaders();
+                m_httpClient = CreateHTTPClient();
+
+                float realtimeAtStart = Time.realtimeSinceStartup;
+                //ffmpegReader = new FfmpegDecoder(currentStationURL);
+                var mfReader = new CSCore.MediaFoundation.MediaFoundationDecoder(currentStationURL);
+                mediaFoundationReader = (IWaveSource)mfReader;
+
+                meter = new PeakMeter(WaveToSampleBase.CreateConverter(mfReader));
+                meter.Interval = 50;
+                if (GlobalRadio == this) {
+                    meter.PeakCalculated += (s,e) => streamSampleVolume = meter.PeakValue;
+                    // Log.LogInfo(meter.PeakValue);
+                }
+
+                centerSource = new VolumeSource(meter);
+                // add audio effects?
+                volumeSource = new VolumeSource(centerSource);
+
+                waveOut = new WaveOut(NetRadio.waveOutLatency);
+                waveOut.Initialize(new SampleToIeeeFloat32(volumeSource));
+                NetRadioPlugin.UpdateGlobalRadioVolume();
+                waveOut.Play();
+                if (waveOutMono != null) { waveOutMono.Play(); }
+
+                connectionTime = Time.realtimeSinceStartup - realtimeAtStart;
+            } 
+            catch (System.Exception) { 
+                if (currentStationURL.StartsWith("http://")) {
+                    streamURLs[currentStation] = currentStationURL.Replace("http://", "https://");
+                    PlayURLMF();
+                    return;
+                } else {
+                    PlayURL();
+                    return;
+                }
+            }
+
+            if (GlobalRadio == this && !spatialize && !failedToLoad) {
+                // metadata on separate connection, so let them run together
+                _= TrackMetadata(); //StartCoroutine(metadataCoroutine);
+            }
+        }
+
         private void PlayURL() {
             try {
                 DisposeOfReaders();
@@ -217,8 +273,10 @@ namespace NetRadio
 
                 float realtimeAtStart = Time.realtimeSinceStartup;
                 ffmpegReader = new FfmpegDecoder(currentStationURL);
+                //var mfReader = new CSCore.MediaFoundation.MediaFoundationDecoder(currentStationURL);
 
                 meter = new PeakMeter(WaveToSampleBase.CreateConverter(ffmpegReader));
+                meter.Interval = 50;
                 if (GlobalRadio == this) {
                     meter.PeakCalculated += (s,e) => streamSampleVolume = meter.PeakValue;
                     // Log.LogInfo(meter.PeakValue);
