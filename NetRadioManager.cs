@@ -89,6 +89,9 @@ namespace NetRadio
         private string currentMetadata;
         public string currentSong { get; private set; }
         public bool trackingMetadata { get; private set; } = false;
+
+        public float connectionTime = 0f;
+        public float metadataTimeOffset = 0f;
         
         //public CancellationTokenSource cts; 
         //Regex metaRegex = new Regex(@"/(?<=\')(.*?)(?=\')/");
@@ -108,8 +111,8 @@ namespace NetRadio
         void OnDestroy() {
             //Instances.Remove(this);
             StopRadio();
-            if (playURLThread != null) { playURLThread.Abort(); }
             if (playURLChildThread != null) { playURLChildThread.Abort(); }
+            if (playURLThread != null) { playURLThread.Abort(); }
             trackingMetadata = false;
             DisposeOfReaders();
         }
@@ -127,6 +130,8 @@ namespace NetRadio
             try { if (waveOutMono != null) { waveOutMono.Dispose(); }
             } catch (System.Exception ex) { Log.LogError(ex); }
             waveOutMono = null;
+
+            if (m_httpClient != null) { m_httpClient.Dispose(); }
         }
 
         public void Play(int streamIndex = -999) { 
@@ -206,10 +211,11 @@ namespace NetRadio
         // waveout functions and variables seem identical 
 
         private void PlayURL() {
-            if (spatialize) { return; } // not implemented yet, don't want to implement it yet
             try {
                 DisposeOfReaders();
+                m_httpClient = CreateHTTPClient();
 
+                float realtimeAtStart = Time.realtimeSinceStartup;
                 ffmpegReader = new FfmpegDecoder(currentStationURL);
 
                 meter = new PeakMeter(WaveToSampleBase.CreateConverter(ffmpegReader));
@@ -240,6 +246,8 @@ namespace NetRadio
                 NetRadioPlugin.UpdateGlobalRadioVolume();
                 waveOut.Play();
                 if (waveOutMono != null) { waveOutMono.Play(); }
+
+                connectionTime = Time.realtimeSinceStartup - realtimeAtStart;
             } 
             catch (System.Exception exception) { 
                 if (currentStationURL.StartsWith("http://")) {
@@ -397,23 +405,32 @@ namespace NetRadio
         }
 
         private async Task TrackMetadata() {
-            if (m_httpClient == null) { m_httpClient = CreateHTTPClient(); }
+            //if (m_httpClient == null) { m_httpClient = CreateHTTPClient(); }
             trackingMetadata = true;
 
             string oldMetadata = currentMetadata; 
             int oldStation = currentStation;
             oldMetadata = "";
             currentMetadata = "";
+            bool looped = false;
             
-            while (trackingMetadata) {
+            while (trackingMetadata && playing) {
                 if (!string.IsNullOrWhiteSpace(currentStationURL)) { 
+                    float realtimeAtStart = Time.realtimeSinceStartup;
                     currentMetadata = await GetMetaDataFromIceCastStream(currentStationURL); 
-                } 
-                if (currentMetadata != oldMetadata) {
-                    HandleMetadata(currentMetadata); 
-                    oldMetadata = currentMetadata;
-                }
+                    float processingTime = Time.realtimeSinceStartup - realtimeAtStart;
+                    if (currentMetadata != oldMetadata) {
+                        metadataTimeOffset = connectionTime - processingTime;
+                        if (metadataTimeOffset >= NetRadio.waveOutLatency && metadataTimeOffset > 0 && looped) { 
+                            await Task.Delay((int)(metadataTimeOffset*1000)); 
+                        }
+                        HandleMetadata(currentMetadata); 
+                        oldMetadata = currentMetadata;
+                    }
+                }  
+                //Log.LogInfo(currentMetadata);
                 await Task.Yield(); //yield return null;
+                looped = true;
             }
             trackingMetadata = false; // cts.Cancel();
         }
@@ -455,8 +472,8 @@ namespace NetRadio
                 string stationAudioInfo = ReadIcyHeader(response, "audio-info"); //ReadIcyHeaders(response, "audio-info").ToList(); */
                 
                 string metaIntString = ReadIcyHeader(response, "metaint");
-                if (!string.IsNullOrEmpty(metaIntString)) {
-                    int metadataInterval = int.Parse(metaIntString);
+                int metadataInterval;
+                if (!string.IsNullOrWhiteSpace(metaIntString) && int.TryParse(metaIntString, out metadataInterval)) {
                     byte[] buffer = new byte[metadataInterval];
                     using (var stream = await response.Content.ReadAsStreamAsync()) {
                         // Can we use this as an NAudio stream for playback? If so that'd simplify the code immensely
