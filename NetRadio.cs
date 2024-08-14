@@ -17,6 +17,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.IO;
 using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Net;
 using CommonAPI;
 using CommonAPI.Phone;
 using CommonAPI.UI;
@@ -49,6 +51,9 @@ namespace NetRadio
         public static Color LabelUnselectedColorDefault = Color.white;
 
         public static int waveOutLatency = 50;
+        public static float bufferTimeInSeconds {get { return NetRadioSettings.extraBufferSec.Value; }}
+
+        public static List<string> hasRedir = new List<string>{};
 
         public static bool PlayerUsingMusicApp() {
             if (player == null || player.phone == null)  { return false; }
@@ -100,6 +105,26 @@ namespace NetRadio
                 return headerValues.First();
             }
             return null;
+        }
+
+        
+        public static string GetRedirectedURL(string url)
+        {
+            try
+            {
+                var request = (HttpWebRequest)HttpWebRequest.Create(url);
+                request.Method = "POST";
+                request.AllowAutoRedirect = true;
+                //request.ContentType = "application/x-www-form-urlencoded";
+                var response = request.GetResponse();
+                string uri = response.ResponseUri.AbsoluteUri.ToString();
+                hasRedir.Add(uri);
+                Log.LogInfo("Updating internal station URL " + url + " - redirects to " + uri);
+                return uri;
+            }
+            catch(Exception) { 
+                return null; 
+            }
         }
 
         /* public static void CheckInputLanguage() {

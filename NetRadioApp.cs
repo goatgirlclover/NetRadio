@@ -103,7 +103,7 @@ namespace NetRadio
             changingVolume = false;
             time = 0.0f;
 
-            string urlForCurrent = NetRadio.StandardizeURL(NetRadio.GlobalRadio.streamURLs[currentStationIndex]);
+            string urlForCurrent = NetRadio.StandardizeURL(NetRadioSettings.configURLs[currentStationIndex]);
             float volumeMultiplier = NetRadioSaveData.stationVolumesByURL.ContainsKey(urlForCurrent) ? (float)NetRadioSaveData.stationVolumesByURL[urlForCurrent] : 1f;
             float volumeHund = volumeMultiplier * 100f;
             volumeInPercent = 5 * (int)Math.Round(volumeHund / 5.0);
@@ -137,7 +137,7 @@ namespace NetRadio
             nextButton.OnConfirm += () => {
                 time = 0.0f;
                 try { 
-                    GUIUtility.systemCopyBuffer = GlobalRadio.streamURLs[currentStationIndex]; 
+                    GUIUtility.systemCopyBuffer = NetRadioSettings.configURLs[currentStationIndex]; 
                     justCopied = true;
                 } catch (System.Exception ex) { 
                     Log.LogError($"Error copying to clipboard: {ex.Message}"); 
@@ -200,7 +200,7 @@ namespace NetRadio
             }
 
             if (changingVolume) {
-                string key = StandardizeURL(GlobalRadio.streamURLs[currentStationIndex]);
+                string key = StandardizeURL(NetRadioSettings.configURLs[currentStationIndex]);
                 decimal value = (decimal)(((decimal)volumeInPercent)/((decimal)100.00));
                 if (NetRadioSaveData.stationVolumesByURL.ContainsKey(key)) {
                     NetRadioSaveData.stationVolumesByURL[key] = value;
@@ -391,7 +391,7 @@ namespace NetRadio
 
         public override void OnAppEnable()
         {
-            NetRadioSettings.LoadURLs(); 
+            //NetRadioSettings.LoadURLs(); 
             Instance = this;
             //this.ScrollView.Separation = 80f; 
 
@@ -435,7 +435,7 @@ namespace NetRadio
 
             int i = -1;
             int numberOfCustomStreams = 0;
-            foreach (string url in GlobalRadio.streamURLs) {
+            foreach (string url in NetRadioSettings.configURLs) {//GlobalRadio.streamURLs) {
                 i++;
                 string stationTitle = GlobalRadio.GetStationTitle(i);
                 if (stationTitle == PluginName) { 

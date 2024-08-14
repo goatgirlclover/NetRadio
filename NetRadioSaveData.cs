@@ -33,7 +33,7 @@ namespace NetRadio
         {
             stationVolumesByURL = new Dictionary<string, decimal>();
             NetRadioSettings.LoadURLs();
-            foreach (string streamURL in NetRadio.GlobalRadio.streamURLs) {
+            foreach (string streamURL in NetRadioSettings.configURLs) {
                 if (!stationVolumesByURL.ContainsKey(StandardizeURL(streamURL))) {
                     stationVolumesByURL.Add(StandardizeURL(streamURL), (decimal)1.00);
                 }

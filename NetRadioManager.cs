@@ -119,7 +119,7 @@ namespace NetRadio
         }
 
         private void DisposeOfReaders() {
-            try { if (mediaFoundationReader != null) { mediaFoundationReader.Dispose(); }
+            /* try { if (mediaFoundationReader != null) { mediaFoundationReader.Dispose(); }
             } catch (System.Exception ex) { Log.LogError(ex); }
             mediaFoundationReader = null;
             try { if (ffmpegReader != null) { ffmpegReader.Dispose(); }
@@ -127,7 +127,7 @@ namespace NetRadio
             ffmpegReader = null;
             try { if (ffmpegReaderMono != null) { ffmpegReaderMono.Dispose(); }
             } catch (System.Exception ex) { Log.LogError(ex); }
-            ffmpegReaderMono = null;
+            ffmpegReaderMono = null; */
             try { if (waveOut != null) { waveOut.Dispose(); }
             } catch (System.Exception ex) { Log.LogError(ex); }
             waveOut = null;
@@ -194,6 +194,8 @@ namespace NetRadio
         }
 
         private void StartPlayURL() {
+            //CheckForRedirection();    
+            
             var threadStart = NetRadioSettings.moreCodecs.Value ? new ThreadStart(PlayURLMF) : new ThreadStart(PlayURL);
             playURLChildThread = new Thread(threadStart);
             playURLChildThread.Start();
@@ -202,6 +204,17 @@ namespace NetRadio
                 failedToLoad = true;
                 playURLChildThread.Abort();
             }
+        }
+
+        private void CheckForRedirection() {
+            try {
+                if (!NetRadio.hasRedir.Contains(currentStationURL)) {
+                    string redirURL = NetRadio.GetRedirectedURL(currentStationURL);
+                    if (redirURL != null) { streamURLs[currentStation] = redirURL; }
+                }    
+            } catch (Exception) {
+                return;
+            }  
         }
 
         // NAUDIO TO CSCORE TRANSLATION
@@ -216,6 +229,8 @@ namespace NetRadio
         // waveout functions and variables seem identical 
 
         private void PlayURLMF() {
+            CheckForRedirection();
+
             if (spatialize) { 
                 PlayURL();
                 return;
@@ -249,12 +264,15 @@ namespace NetRadio
 
                 connectionTime = Time.realtimeSinceStartup - realtimeAtStart;
             } 
-            catch (System.Exception) { 
+            catch (System.Exception exception) { 
                 if (currentStationURL.StartsWith("http://")) {
                     streamURLs[currentStation] = currentStationURL.Replace("http://", "https://");
                     PlayURLMF();
                     return;
-                } else {
+                } else { 
+                    Log.LogError($"(Media Foundation) Error playing radio: {exception.Message}"); 
+                    Log.LogError(exception.StackTrace); 
+                    streamURLs[currentStation] = currentStationURL.Replace("https://", "http://");
                     PlayURL();
                     return;
                 }
@@ -267,24 +285,30 @@ namespace NetRadio
         }
 
         private void PlayURL() {
+            CheckForRedirection();
+
             try {
                 DisposeOfReaders();
                 m_httpClient = CreateHTTPClient();
 
                 float realtimeAtStart = Time.realtimeSinceStartup;
                 ffmpegReader = new FfmpegDecoder(currentStationURL);
+                
+                int bufferInt = ffmpegReader.WaveFormat.SampleRate * ffmpegReader.WaveFormat.BlockAlign;
+                bufferInt = (int)Mathf.Round((float)bufferInt * (float)NetRadio.bufferTimeInSeconds);
+                var buffer = new BufferSource(ffmpegReader, bufferInt);
                 //var mfReader = new CSCore.MediaFoundation.MediaFoundationDecoder(currentStationURL);
 
-                meter = new PeakMeter(WaveToSampleBase.CreateConverter(ffmpegReader));
+                meter = new PeakMeter(WaveToSampleBase.CreateConverter(buffer));
                 meter.Interval = 50;
                 if (GlobalRadio == this) {
                     meter.PeakCalculated += (s,e) => streamSampleVolume = meter.PeakValue;
                     // Log.LogInfo(meter.PeakValue);
                 }
 
-                centerSource = new VolumeSource(meter);
+                centerSource = new VolumeSource(meter); //spatialize ? new VolumeSource(meter) : null;
                 // add audio effects?
-                volumeSource = new VolumeSource(centerSource);
+                volumeSource = new VolumeSource(centerSource); //spatialize ? new VolumeSource(centerSource) : new VolumeSource(meter);
 
                 if (spatialize) {
                     ffmpegReaderMono = new FfmpegDecoder(currentStationURL);
@@ -300,6 +324,7 @@ namespace NetRadio
                 }
 
                 waveOut = new WaveOut(NetRadio.waveOutLatency);
+                //var buffer = new BufferSource(new SampleToIeeeFloat32(volumeSource), 200000);
                 waveOut.Initialize(new SampleToIeeeFloat32(volumeSource));
                 NetRadioPlugin.UpdateGlobalRadioVolume();
                 waveOut.Play();
@@ -326,7 +351,7 @@ namespace NetRadio
             }
         }
 
-        /* private void PlayURL() {
+        /* private void PlayURLNAudio() {
             try {
                 MediaFoundationReader.MediaFoundationReaderSettings mediaFoundationReaderSettings = new MediaFoundationReader.MediaFoundationReaderSettings() {
                     RepositionInRead = true,
@@ -524,6 +549,31 @@ namespace NetRadio
             m_httpClient.DefaultRequestHeaders.Remove("Icy-MetaData");
 
             if (response.IsSuccessStatusCode) {
+                /* String allHeaders = Enumerable
+                .Empty<(String name, String value)>()
+                // Add the main Response headers as a flat list of value-tuples with potentially duplicate `name` values:
+                .Concat(
+                    response.Headers
+                        .SelectMany( kvp => kvp.Value
+                            .Select( v => ( name: kvp.Key, value: v ) )
+                        )
+                )
+                // Concat with the content-specific headers as a flat list of value-tuples with potentially duplicate `name` values:
+                .Concat(
+                    response.Content.Headers
+                        .SelectMany( kvp => kvp.Value
+                            .Select( v => ( name: kvp.Key, value: v ) )
+                        )
+                )
+                // Render to a string:
+                .Aggregate(
+                    seed: new System.Text.StringBuilder(),
+                    func: ( sb, pair ) => sb.Append( pair.name ).Append( ": " ).Append( pair.value ).AppendLine(),
+                    resultSelector: sb => sb.ToString()
+                );
+
+                Log.LogInfo(allHeaders); */
+
                 string stationName = ReadIcyHeader(response, "name");
                 string stationDesc = ReadIcyHeader(response, "description");
                 string stationGenre = ReadIcyHeader(response, "genre"); //ReadIcyHeaders(response, "genre").ToList();
