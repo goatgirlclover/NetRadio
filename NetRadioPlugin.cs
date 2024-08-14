@@ -12,9 +12,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.IO;
+using System.Diagnostics;
+using CSCore;
+using CSCore.Ffmpeg;
+using CSCore.Streams;
 using CommonAPI;
-using NAudio.Wave;
-using NAudio.Wave.SampleProviders;
 
 namespace NetRadio
 {
@@ -56,6 +58,15 @@ namespace NetRadio
                     NetRadio.Log.LogError("Development version of " + NetRadio.PluginGUID + " detected! Please delete the development version (goatgirl.LiveRadioPOC)!");
                 }
             }       
+
+            if (Debugger.IsAttached)
+            {
+                FfmpegUtils.LogToDefaultLogger = false;
+                FfmpegUtils.FfmpegLogReceived += (s, e) =>
+                {
+                    Logger.LogError(e.Message);
+                };
+            }
         }
 
         private void OnDestroy() {
@@ -65,9 +76,7 @@ namespace NetRadio
         private void Update() {
             if (NetRadio.GlobalRadio is NetRadioManager) {
                 if (NetRadio.GlobalRadio.playing) {
-                    string urlForCurrent = NetRadio.StandardizeURL(NetRadio.GlobalRadio.currentStationURL);
-                    float volumeMultiplier = NetRadioSaveData.stationVolumesByURL.ContainsKey(urlForCurrent) ? (float)NetRadioSaveData.stationVolumesByURL[urlForCurrent] : 1f;
-                    NetRadio.GlobalRadio.radioVolume = NetRadio.radioMusicVolume * volumeMultiplier;
+                    UpdateGlobalRadioVolume();
                     if (NetRadio.musicPlayer.IsPlaying) { NetRadio.musicPlayer.ForcePaused(); }
                 }
 
@@ -83,6 +92,12 @@ namespace NetRadio
             if (NetRadio.pressedAnyButtonIn(NetRadioSettings.keybindsReload)) {
                 NetRadioManager.ReloadAllStations();
             }
+        }
+
+        public static void UpdateGlobalRadioVolume() {
+            string urlForCurrent = NetRadio.StandardizeURL(NetRadio.GlobalRadio.currentStationURL);
+            float volumeMultiplier = NetRadioSaveData.stationVolumesByURL.ContainsKey(urlForCurrent) ? (float)NetRadioSaveData.stationVolumesByURL[urlForCurrent] : 1f;
+            NetRadio.GlobalRadio.radioVolume = NetRadio.radioMusicVolume * volumeMultiplier;
         }
 
         public static void UpdateCurrentSong(bool skipCheck = false) {

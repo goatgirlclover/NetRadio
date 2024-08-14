@@ -13,8 +13,11 @@ using System.Threading.Tasks;
 using CommonAPI;
 using CommonAPI.Phone;
 using CommonAPI.UI;
-using NAudio.Wave;
-using NAudio.Wave.SampleProviders;
+using CSCore; 
+using CSCore.Streams; 
+using CSCore.Streams.SampleConverter;
+using CSCore.Ffmpeg; 
+using CSCore.SoundOut; 
 using TMPro;
 using static NetRadio.NetRadio;
 
@@ -100,7 +103,7 @@ namespace NetRadio
             changingVolume = false;
             time = 0.0f;
 
-            string urlForCurrent = NetRadio.StandardizeURL(NetRadio.GlobalRadio.streamURLs[currentStationIndex]);
+            string urlForCurrent = NetRadio.StandardizeURL(NetRadioSettings.configURLs[currentStationIndex]);
             float volumeMultiplier = NetRadioSaveData.stationVolumesByURL.ContainsKey(urlForCurrent) ? (float)NetRadioSaveData.stationVolumesByURL[urlForCurrent] : 1f;
             float volumeHund = volumeMultiplier * 100f;
             volumeInPercent = 5 * (int)Math.Round(volumeHund / 5.0);
@@ -134,7 +137,7 @@ namespace NetRadio
             nextButton.OnConfirm += () => {
                 time = 0.0f;
                 try { 
-                    GUIUtility.systemCopyBuffer = GlobalRadio.streamURLs[currentStationIndex]; 
+                    GUIUtility.systemCopyBuffer = NetRadioSettings.configURLs[currentStationIndex]; 
                     justCopied = true;
                 } catch (System.Exception ex) { 
                     Log.LogError($"Error copying to clipboard: {ex.Message}"); 
@@ -197,7 +200,7 @@ namespace NetRadio
             }
 
             if (changingVolume) {
-                string key = StandardizeURL(GlobalRadio.streamURLs[currentStationIndex]);
+                string key = StandardizeURL(NetRadioSettings.configURLs[currentStationIndex]);
                 decimal value = (decimal)(((decimal)volumeInPercent)/((decimal)100.00));
                 if (NetRadioSaveData.stationVolumesByURL.ContainsKey(key)) {
                     NetRadioSaveData.stationVolumesByURL[key] = value;
@@ -274,9 +277,9 @@ namespace NetRadio
         public static bool playing = false;
         public static bool runPrefix = true;
         
-        private static MediaFoundationReader mediaFoundationReader;
-        public static WaveOutEvent waveOut;
-        private static VolumeSampleProvider volumeSampleProvider;
+        private static FfmpegDecoder ffmpegReader;
+        public static WaveOut waveOut;
+        private static VolumeSource volumeSource; 
 
         public static Sprite SelectedButtonSprite;
         public static Sprite UnselectedButtonSprite;
@@ -328,10 +331,10 @@ namespace NetRadio
             IconSprite = LoadSprite(Path.Combine(dataDirectory, "icon.png")); 
             PhoneAPI.RegisterApp<AppNetRadio>(appName, IconSprite); 
 
-            mediaFoundationReader = new MediaFoundationReader(Path.Combine(dataDirectory, "Tuning.mp3"));
-            volumeSampleProvider = new VolumeSampleProvider(mediaFoundationReader.ToSampleProvider());
-            waveOut = new WaveOutEvent();
-            waveOut.Init(volumeSampleProvider);
+            ffmpegReader = new FfmpegDecoder(Path.Combine(dataDirectory, "Tuning.mp3"));
+            volumeSource = new VolumeSource(WaveToSampleBase.CreateConverter(ffmpegReader));
+            waveOut = new WaveOut(NetRadio.waveOutLatency);
+            waveOut.Initialize(new SampleToIeeeFloat32(volumeSource));
 
             SelectedButtonSprite = LoadSprite(Path.Combine(dataDirectory, "SimpleButton-Selected.png"));
             UnselectedButtonSprite = LoadSprite(Path.Combine(dataDirectory, "SimpleButton.png"));
@@ -388,7 +391,7 @@ namespace NetRadio
 
         public override void OnAppEnable()
         {
-            NetRadioSettings.LoadURLs(); 
+            //NetRadioSettings.LoadURLs(); 
             Instance = this;
             //this.ScrollView.Separation = 80f; 
 
@@ -432,7 +435,7 @@ namespace NetRadio
 
             int i = -1;
             int numberOfCustomStreams = 0;
-            foreach (string url in GlobalRadio.streamURLs) {
+            foreach (string url in NetRadioSettings.configURLs) {//GlobalRadio.streamURLs) {
                 i++;
                 string stationTitle = GlobalRadio.GetStationTitle(i);
                 if (stationTitle == PluginName) { 
@@ -472,7 +475,7 @@ namespace NetRadio
             musicPlayer.ForcePaused();
             GlobalRadio.Play(index); //NetRadioPlugin.GlobalRadio.streamURLs.IndexOf(urlLabels[i].text));//(nextButton.Label.text));
             
-            mediaFoundationReader.Position = 0;
+            ffmpegReader.Position = 0;
             playing = true;
             waveOut.Play();
             StartCoroutine(Instance.ClearButtons()); 
@@ -503,7 +506,7 @@ namespace NetRadio
                 overlayInstance = null; 
             }
             justCleared = false;
-            //waveOut.Stop(); playing = false; 
+            waveOut.Stop(); playing = false; 
         }
 
         public IEnumerator StopIn(float sec) {
@@ -573,9 +576,9 @@ namespace NetRadio
                 }
             }
             
-            if (volumeSampleProvider != null) { //if (waveOut.PlaybackState == PlaybackState.Playing) {
-                volumeSampleProvider.Volume = radioMusicVolume;
-            }
+            if (volumeSource != null) { //if (waveOut.PlaybackState == PlaybackState.Playing) {
+                volumeSource.Volume = radioMusicVolume;
+            } 
 
             realTime += Time.deltaTime;
 

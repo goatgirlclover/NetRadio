@@ -16,8 +16,12 @@ namespace NetRadio
         public static ConfigEntry<int> startupIndex; 
         public static ConfigEntry<bool> configureRequireConnection;
 
+        public static ConfigEntry<float> extraBufferSec;
+
         public static ConfigEntry<string> keybindsReloadUnsplit;
+
         public static ConfigEntry<bool> noThreads;
+        public static ConfigEntry<bool> moreCodecs;
 
         public static List<KeyCode> keybindsReload;
 
@@ -32,24 +36,28 @@ namespace NetRadio
         // potentially useful for radio expansion mods
         public static string extraStations = ""; 
 
+        public static List<string> configURLs;
+
         public static void BindSettings(ConfigFile Config) {
             streamURLsUnsplit = Config.Bind(
                 "Settings",          // The section under which the option is shown
                 "Custom Stream URLs",     // The key of the configuration option in the configuration file
                 "",    // The default value
-                "List of custom radio station URLs, separated by commas. MP3 recommended. To add a display name, format your link like: (StationName)https://stationlink.com/stream.mp3"); // Description of the option 
+                "List of custom radio station URLs, separated by commas. To add a display name, format your link like: (StationName)https://stationlink.com/stream.mp3"); // Description of the option 
             streamURLsUnsplit.SettingChanged += UpdateSettingsEvent;
 
-            streamVolume = Config.Bind("Settings", "Radio Volume", 1f, "Relative volume of radio stream compared to in-game music.");
+            streamVolume = Config.Bind("Settings", "Radio Volume", 1f, "Relative volume of all radio streams compared to in-game music. Note that you can set individual stations' volumes in the NetRadio app.");
 
             playOnStartup = Config.Bind("Settings", "Play Radio on Startup", false, "Whether or not a radio station should automatically play upon loading a save.");
             startupIndex = Config.Bind("Settings", "Startup Radio Station", -1, "The index of the station to play automatically if Play Radio on Startup is enabled (the first station in the NetRadio app is at index 0). If set to -1, the station will be chosen randomly.");
             configureRequireConnection = Config.Bind("Settings", "Configuring Stations Requires Connection", true, "Whether it is possible to change a station's settings within the NetRadio app without connecting to the station.");
+            extraBufferSec = Config.Bind("Settings", "Buffer Time", 1.0f, "The length of the station's buffer in seconds. A longer buffer delays audio playback, but reduces stuttering.");
             
             keybindsReloadUnsplit = Config.Bind("Settings", "Reload Radios Keybinds", "F11", "Press to reload all in-game radio streams.");
             keybindsReloadUnsplit.SettingChanged += UpdateSettingsEvent;
 
             noThreads = Config.Bind("Settings", "Disable Multithreading", false, "EXPERIMENTAL! Prevent multithreading for radio streaming, causing the game to freeze when starting a radio. Not recommended.");
+            moreCodecs = Config.Bind("Settings", "Enable Media Foundation Codecs", false, "EXPERIMENTAL! Windows only. Allow the use of Windows Media Foundation codecs instead of FFmpeg. Note that if the Media Foundation player fails, the mod will fallback to FFmpeg.");
             // fast panning option - just pan the stereo output directly, using only one waveout
         }
 
@@ -91,6 +99,7 @@ namespace NetRadio
             }
 
             NetRadio.GlobalRadio.streamURLs = newStreams;
+            configURLs = newStreams;
             keybindsReload = KeyCodeListFromList(SplitStringByCommas(keybindsReloadUnsplit.Value));
 
             AppNetRadio.originalURLLabelText.Clear();
