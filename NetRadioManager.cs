@@ -120,14 +120,14 @@ namespace NetRadio
 
         private void DisposeOfReaders() {
             /* try { if (mediaFoundationReader != null) { mediaFoundationReader.Dispose(); }
-            } catch (System.Exception ex) { Log.LogError(ex); }
+            } catch (System.Exception ex) { Log.LogError(ex); } */
             mediaFoundationReader = null;
-            try { if (ffmpegReader != null) { ffmpegReader.Dispose(); }
-            } catch (System.Exception ex) { Log.LogError(ex); }
+            /* try { if (ffmpegReader != null) { ffmpegReader.Dispose(); }
+            } catch (System.Exception ex) { Log.LogError(ex); } */
             ffmpegReader = null;
-            try { if (ffmpegReaderMono != null) { ffmpegReaderMono.Dispose(); }
-            } catch (System.Exception ex) { Log.LogError(ex); }
-            ffmpegReaderMono = null; */
+            /* try { if (ffmpegReaderMono != null) { ffmpegReaderMono.Dispose(); }
+            } catch (System.Exception ex) { Log.LogError(ex); } */
+            ffmpegReaderMono = null; 
             try { if (waveOut != null) { waveOut.Dispose(); }
             } catch (System.Exception ex) { Log.LogError(ex); }
             waveOut = null;
@@ -243,9 +243,14 @@ namespace NetRadio
                 float realtimeAtStart = Time.realtimeSinceStartup;
                 //ffmpegReader = new FfmpegDecoder(currentStationURL);
                 var mfReader = new CSCore.MediaFoundation.MediaFoundationDecoder(currentStationURL);
+                connectionTime = Time.realtimeSinceStartup - realtimeAtStart;
                 mediaFoundationReader = (IWaveSource)mfReader;
 
-                meter = new PeakMeter(WaveToSampleBase.CreateConverter(mfReader));
+                int bufferInt = mfReader.WaveFormat.SampleRate * mfReader.WaveFormat.BlockAlign;
+                bufferInt = (int)Mathf.Round((float)bufferInt * (float)NetRadio.bufferTimeInSeconds);
+                var buffer = new BufferSource(ffmpegReader, bufferInt);
+                
+                meter = new PeakMeter(WaveToSampleBase.CreateConverter(buffer));
                 meter.Interval = 50;
                 if (GlobalRadio == this) {
                     meter.PeakCalculated += (s,e) => streamSampleVolume = meter.PeakValue;
@@ -261,8 +266,6 @@ namespace NetRadio
                 NetRadioPlugin.UpdateGlobalRadioVolume();
                 waveOut.Play();
                 if (waveOutMono != null) { waveOutMono.Play(); }
-
-                connectionTime = Time.realtimeSinceStartup - realtimeAtStart;
             } 
             catch (System.Exception exception) { 
                 if (currentStationURL.StartsWith("http://")) {
@@ -292,7 +295,9 @@ namespace NetRadio
                 m_httpClient = CreateHTTPClient();
 
                 float realtimeAtStart = Time.realtimeSinceStartup;
-                ffmpegReader = new FfmpegDecoder(currentStationURL);
+                var ffr = new FfmpegDecoder(currentStationURL);
+                connectionTime = Time.realtimeSinceStartup - realtimeAtStart;
+                ffmpegReader = ffr;
                 
                 int bufferInt = ffmpegReader.WaveFormat.SampleRate * ffmpegReader.WaveFormat.BlockAlign;
                 bufferInt = (int)Mathf.Round((float)bufferInt * (float)NetRadio.bufferTimeInSeconds);
@@ -504,6 +509,10 @@ namespace NetRadio
                     float processingTime = Time.realtimeSinceStartup - realtimeAtStart;
                     if (currentMetadata != oldMetadata) {
                         metadataTimeOffset = connectionTime - processingTime;
+                        Log.LogInfo(metadataTimeOffset + NetRadio.bufferTimeInSeconds);
+                        metadataTimeOffset += NetRadio.bufferTimeInSeconds;
+                        metadataTimeOffset *= 0.79f;
+                        
                         if (metadataTimeOffset > 0 && looped) { 
                             await Task.Delay((int)(metadataTimeOffset*1000)); 
                         }
@@ -544,6 +553,10 @@ namespace NetRadio
             //if (m_httpClient == null) { m_httpClient = CreateHTTPClient(); }
             if (url == null) { return null; }
 
+            //var formatContext = new CSCore.Ffmpeg.AvFormatContext(url);
+            /* Log.LogInfo(String.Join(",", ffmpegReader.Metadata.Keys.Select(o=>o.ToString()).ToArray()));
+            Log.LogInfo(String.Join(",", ffmpegReader.Metadata.Values.Select(o=>o.ToString()).ToArray())); */
+
             m_httpClient.DefaultRequestHeaders.Add("Icy-MetaData", "1");
             var response = await m_httpClient.GetAsync(url, System.Net.Http.HttpCompletionOption.ResponseHeadersRead);
             m_httpClient.DefaultRequestHeaders.Remove("Icy-MetaData");
@@ -572,7 +585,7 @@ namespace NetRadio
                     resultSelector: sb => sb.ToString()
                 );
 
-                Log.LogInfo(allHeaders); */
+                Log.LogInfo(allHeaders);
 
                 string stationName = ReadIcyHeader(response, "name");
                 string stationDesc = ReadIcyHeader(response, "description");
