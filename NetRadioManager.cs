@@ -39,7 +39,7 @@ namespace NetRadio
         }; */
 
         public FfmpegDecoder ffmpegReader;
-        public WaveOut waveOut;
+        public WasapiOut wasapiOut;
         public VolumeSource volumeSource;
 
         /*public VorbisWaveReader vorbisReader;
@@ -48,7 +48,7 @@ namespace NetRadio
 
         // for spatial audio emulation
         public FfmpegDecoder ffmpegReaderMono;
-        public WaveOut waveOutMono;
+        public WasapiOut wasapiOutMono;
         public SampleAggregatorBase centerSource;
         public VolumeSource monoSource; 
         public VolumeSource monoVolumeSource; 
@@ -70,7 +70,7 @@ namespace NetRadio
         public float volume = 1.0f; // base volume for radio. set to 1.0 for globalradio
 
         public bool playing { 
-            get { return waveOut != null ? waveOut.PlaybackState == PlaybackState.Playing : false; } 
+            get { return wasapiOut != null ? wasapiOut.PlaybackState == PlaybackState.Playing : false; } 
             set { if (value == true) { Resume(); } else { Stop(); } } 
         }
 
@@ -128,12 +128,12 @@ namespace NetRadio
             /* try { if (ffmpegReaderMono != null) { ffmpegReaderMono.Dispose(); }
             } catch (System.Exception ex) { Log.LogError(ex); } */
             ffmpegReaderMono = null; 
-            try { if (waveOut != null) { waveOut.Dispose(); }
+            try { if (wasapiOut != null) { wasapiOut.Dispose(); }
             } catch (System.Exception ex) { Log.LogError(ex); }
-            waveOut = null;
-            try { if (waveOutMono != null) { waveOutMono.Dispose(); }
+            wasapiOut = null;
+            try { if (wasapiOutMono != null) { wasapiOutMono.Dispose(); }
             } catch (System.Exception ex) { Log.LogError(ex); }
-            waveOutMono = null;
+            wasapiOutMono = null;
 
             if (m_httpClient != null) { m_httpClient.Dispose(); }
         }
@@ -145,19 +145,19 @@ namespace NetRadio
         public void Stop() { StopRadio(); }
 
         public void Resume() { 
-            if (waveOut != null) { waveOut.Play(); }
-            if (waveOutMono != null) { waveOutMono.Play(); }
+            if (wasapiOut != null) { wasapiOut.Play(); }
+            if (wasapiOutMono != null) { wasapiOutMono.Play(); }
         }
         public void Pause() {
-            if (waveOut != null) { waveOut.Pause(); }
-            if (waveOutMono != null) { waveOutMono.Pause(); }
+            if (wasapiOut != null) { wasapiOut.Pause(); }
+            if (wasapiOutMono != null) { wasapiOutMono.Pause(); }
         }
 
         public static void ReloadAllStations() { // backup option for fixing syncing issues 
             NetRadioSettings.LoadURLs();
             NetRadioSettings.RefreshMusicApp();
             foreach (NetRadioManager radioManager in Resources.FindObjectsOfTypeAll<NetRadioManager>()) { 
-                if (radioManager != null && radioManager.currentStation >= 0 && radioManager.waveOut.PlaybackState != PlaybackState.Stopped) { 
+                if (radioManager != null && radioManager.currentStation >= 0 && radioManager.wasapiOut.PlaybackState != PlaybackState.Stopped) { 
                     radioManager.PlayRadioStation(radioManager.currentStation); 
                 }
             }
@@ -225,7 +225,7 @@ namespace NetRadio
         // StereoToMonoSampleProvider = StereoToMonoSource
         // PanningSampleProvider = PanSource
         // MeteringSampleProvider = PeakMeter
-        // waveOut.Init() = waveOut.Initialize()
+        // wasapiOut.Init() = wasapiOut.Initialize()
         // waveout functions and variables seem identical 
 
         private void PlayURLMF() {
@@ -261,11 +261,11 @@ namespace NetRadio
                 // add audio effects?
                 volumeSource = new VolumeSource(centerSource);
 
-                waveOut = new WaveOut(NetRadio.waveOutLatency);
-                waveOut.Initialize(new SampleToIeeeFloat32(volumeSource));
+                wasapiOut = new WasapiOut(false, CSCore.CoreAudioAPI.AudioClientShareMode.Shared, NetRadio.wasapiOutLatency);
+                wasapiOut.Initialize(new SampleToIeeeFloat32(volumeSource));
                 NetRadioPlugin.UpdateGlobalRadioVolume();
-                waveOut.Play();
-                if (waveOutMono != null) { waveOutMono.Play(); }
+                wasapiOut.Play();
+                if (wasapiOutMono != null) { wasapiOutMono.Play(); }
             } 
             catch (System.Exception exception) { 
                 if (currentStationURL.StartsWith("http://")) {
@@ -324,16 +324,16 @@ namespace NetRadio
                     pannedMonoSource = new PanSource(monoVolumeSource);
                     
                     radioVolume = 0f;
-                    waveOutMono = new WaveOut(NetRadio.waveOutLatency);
-                    waveOutMono.Initialize(new SampleToIeeeFloat32(pannedMonoSource));
+                    wasapiOutMono = new WasapiOut(false, CSCore.CoreAudioAPI.AudioClientShareMode.Shared, NetRadio.wasapiOutLatency);
+                    wasapiOutMono.Initialize(new SampleToIeeeFloat32(pannedMonoSource));
                 }
 
-                waveOut = new WaveOut(NetRadio.waveOutLatency);
+                wasapiOut = new WasapiOut(false, CSCore.CoreAudioAPI.AudioClientShareMode.Shared, NetRadio.wasapiOutLatency);
                 //var buffer = new BufferSource(new SampleToIeeeFloat32(volumeSource), 200000);
-                waveOut.Initialize(new SampleToIeeeFloat32(volumeSource));
+                wasapiOut.Initialize(new SampleToIeeeFloat32(volumeSource));
                 NetRadioPlugin.UpdateGlobalRadioVolume();
-                waveOut.Play();
-                if (waveOutMono != null) { waveOutMono.Play(); }
+                wasapiOut.Play();
+                if (wasapiOutMono != null) { wasapiOutMono.Play(); }
 
                 connectionTime = Time.realtimeSinceStartup - realtimeAtStart;
             } 
@@ -383,15 +383,15 @@ namespace NetRadio
                     pannedMonoSampleProvider = new PanningSampleProvider(monoVolumeSampleProvider);
                     
                     radioVolume = 0f;
-                    waveOutMono = new WaveOutEvent();
-                    waveOutMono.Init(pannedMonoSampleProvider);
+                    wasapiOutMono = new WasapiOutEvent();
+                    wasapiOutMono.Init(pannedMonoSampleProvider);
                 }
 
-                waveOut = new WaveOutEvent();
-                waveOut.Init(volumeSampleProvider);
+                wasapiOut = new WasapiOutEvent();
+                wasapiOut.Init(volumeSampleProvider);
                 
-                waveOut.Play();
-                if (waveOutMono != null) { waveOutMono.Play(); }
+                wasapiOut.Play();
+                if (wasapiOutMono != null) { wasapiOutMono.Play(); }
             } 
             catch (System.Exception exception) { 
                 if (currentStationURL.StartsWith("http://")) {
@@ -437,15 +437,15 @@ namespace NetRadio
                         pannedMonoSampleProvider = new PanningSampleProvider(monoVolumeSampleProvider);
                         
                         radioVolume = 0f;
-                        waveOutMono = new WaveOutEvent();
-                        waveOutMono.Init(pannedMonoSampleProvider);
+                        wasapiOutMono = new WasapiOutEvent();
+                        wasapiOutMono.Init(pannedMonoSampleProvider);
                     } 
 
-                    waveOut = new WaveOutEvent();
-                    waveOut.Init(volumeSampleProvider);
+                    wasapiOut = new WasapiOutEvent();
+                    wasapiOut.Init(volumeSampleProvider);
                     
-                    waveOut.Play();
-                    if (waveOutMono != null) { waveOutMono.Play(); }
+                    wasapiOut.Play();
+                    if (wasapiOutMono != null) { wasapiOutMono.Play(); }
                 }
                 
             }
@@ -471,8 +471,8 @@ namespace NetRadio
             trackingMetadata = false;
             currentMetadata = "";
             currentSong = "Unknown Track";
-            if (waveOut != null) { waveOut.Stop(); }
-            if (waveOutMono != null) { waveOutMono.Stop(); } 
+            if (wasapiOut != null) { wasapiOut.Stop(); }
+            if (wasapiOutMono != null) { wasapiOutMono.Stop(); } 
         }
 
         public String GetStationTitle(int streamIndex = -999) {
