@@ -80,7 +80,7 @@ namespace NetRadio
                     if (NetRadio.musicPlayer.IsPlaying) { NetRadio.musicPlayer.ForcePaused(); }
                 }
 
-                if (AppNetRadio.wasapiOut != null && AppNetRadio.playing) {
+                if (AppNetRadio.waveOut != null && AppNetRadio.playing) {
                     if (NetRadio.GlobalRadio.failedToLoad) {
                         StartCoroutine(AppNetRadio.Instance.HandleFailedConnection());
                     } else if (NetRadio.GlobalRadio.playing) {

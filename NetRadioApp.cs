@@ -278,7 +278,7 @@ namespace NetRadio
         public static bool runPrefix = true;
         
         private static FfmpegDecoder ffmpegReader;
-        public static WasapiOut wasapiOut;
+        public static WaveOut waveOut;
         private static VolumeSource volumeSource; 
 
         public static Sprite SelectedButtonSprite;
@@ -333,8 +333,8 @@ namespace NetRadio
 
             ffmpegReader = new FfmpegDecoder(Path.Combine(dataDirectory, "Tuning.mp3"));
             volumeSource = new VolumeSource(WaveToSampleBase.CreateConverter(ffmpegReader));
-            wasapiOut = new WasapiOut(false, CSCore.CoreAudioAPI.AudioClientShareMode.Shared, NetRadio.wasapiOutLatency);
-            wasapiOut.Initialize(new SampleToIeeeFloat32(volumeSource));
+            waveOut = new WaveOut(NetRadio.waveOutLatency);
+            waveOut.Initialize(new SampleToIeeeFloat32(volumeSource));
 
             SelectedButtonSprite = LoadSprite(Path.Combine(dataDirectory, "SimpleButton-Selected.png"));
             UnselectedButtonSprite = LoadSprite(Path.Combine(dataDirectory, "SimpleButton.png"));
@@ -477,7 +477,7 @@ namespace NetRadio
             
             ffmpegReader.Position = 0;
             playing = true;
-            wasapiOut.Play();
+            waveOut.Play();
             StartCoroutine(Instance.ClearButtons()); 
         }
 
@@ -506,18 +506,18 @@ namespace NetRadio
                 overlayInstance = null; 
             }
             justCleared = false;
-            wasapiOut.Stop(); playing = false; 
+            waveOut.Stop(); playing = false; 
         }
 
         public IEnumerator StopIn(float sec) {
             playing = false;
             yield return new WaitForSeconds(sec);
-            wasapiOut.Stop();
+            waveOut.Stop();
         }
 
         public IEnumerator HandleFailedConnection() {
             playing = false;
-            wasapiOut.Stop();
+            waveOut.Stop();
 
             if (overlayInstance != null) {
                 Destroy(overlayInstance.gameObject);
@@ -576,7 +576,7 @@ namespace NetRadio
                 }
             }
             
-            if (volumeSource != null) { //if (wasapiOut.PlaybackState == PlaybackState.Playing) {
+            if (volumeSource != null) { //if (waveOut.PlaybackState == PlaybackState.Playing) {
                 volumeSource.Volume = radioMusicVolume;
             } 
 
