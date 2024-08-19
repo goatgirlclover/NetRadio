@@ -43,7 +43,7 @@ namespace NetRadio
 
         public const string PluginName = "NetRadio";
         public const string PluginGUID = "goatgirl.NetRadio";
-        public const string PluginVersion = "1.0.0";
+        public const string PluginVersion = "1.0.2";
 
         public static bool gameStarted = false;
 
@@ -116,6 +116,7 @@ namespace NetRadio
                 var request = (HttpWebRequest)HttpWebRequest.Create(url);
                 request.Method = "POST";
                 request.AllowAutoRedirect = true;
+                request.Timeout = 2000; // 2 sec
                 //request.ContentType = "application/x-www-form-urlencoded";
                 var response = request.GetResponse();
                 string uri = response.ResponseUri.AbsoluteUri.ToString();
