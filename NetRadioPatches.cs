@@ -29,7 +29,7 @@ namespace NetRadio {
         [HarmonyPrefix]
         [HarmonyPatch(nameof(AppMusicPlayer.OnReleaseRight))]
         public static bool OnReleaseRight_ClearCurrent(AppMusicPlayer __instance) {
-            if (GlobalRadio.playing) {
+            if (GlobalRadio.playing && !__instance.shuffleControlSelected) {
                 GlobalRadio.Stop();
                 __instance.m_StatusPanel.m_CurrentTrack = null;
                 (__instance.GameMusicPlayer as MusicPlayer).musicTrackQueue.currentTrackIndex = -1;
@@ -99,7 +99,8 @@ namespace NetRadio {
                 NetRadioPlugin.Instance.StartCoroutine(NetRadio.MuteUntilRadioPlaying());
                 if (NetRadioSettings.startupIndex.Value == -1) { NetRadio.GlobalRadio.PlayRandomStation(); }
                 else { NetRadio.GlobalRadio.PlayRadioStation(NetRadioSettings.startupIndex.Value); }
-                //AppNetRadio.waveOut.Play();
+                AppNetRadio.PlayNoise(); //AppNetRadio.waveOut.Play();
+                AppNetRadio.musicPlayerWasInterrupted = false;
             }
         }
     }
@@ -116,10 +117,9 @@ namespace NetRadio {
 
         public static void Postfix(SimplePhoneButton __instance) {
             if ((player.phone.m_CurrentApp is AppNetRadio && AppNetRadio.runPrefix) || player.phone.m_CurrentApp is AppSelectedStation) {
-                if (NetRadio.IsHeaderButton(__instance)) {
-                    __instance.ButtonImage.sprite = AppNetRadio.BlankButtonSprite;
-                }
+                if (NetRadio.IsHeaderButton(__instance)) { __instance.ButtonImage.sprite = AppNetRadio.BlankButtonSprite; }
                 if (!NetRadio.IsStationButton(__instance)) { return; }
+                
                 var currentSprite = __instance.ButtonImage.sprite;
                 bool selected = currentSprite == __instance.SelectedButtonSprite;
 

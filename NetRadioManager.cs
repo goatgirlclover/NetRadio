@@ -39,7 +39,7 @@ namespace NetRadio
         }; */
 
         public FfmpegDecoder ffmpegReader;
-        public WaveOut waveOut;
+        public DirectSoundOut directSoundOut;
         public VolumeSource volumeSource;
 
         /*public VorbisWaveReader vorbisReader;
@@ -48,7 +48,7 @@ namespace NetRadio
 
         // for spatial audio emulation
         public FfmpegDecoder ffmpegReaderMono;
-        public WaveOut waveOutMono;
+        public DirectSoundOut waveOutMono;
         public SampleAggregatorBase centerSource;
         public VolumeSource monoSource; 
         public VolumeSource monoVolumeSource; 
@@ -70,13 +70,15 @@ namespace NetRadio
         public float volume = 1.0f; // base volume for radio. set to 1.0 for globalradio
 
         public bool playing { 
-            get { return waveOut != null ? waveOut.PlaybackState == PlaybackState.Playing : false; } 
+            get { return directSoundOut != null ? directSoundOut.PlaybackState == PlaybackState.Playing : false; } 
             set { if (value == true) { Resume(); } else { Stop(); } } 
         }
 
+        public bool stopped = false;
+
         public float pan { get; private set; } = 0f;
 
-        public int currentStation { get; private set; } = -1; 
+        public int currentStation { get; private set; } = -1;
         public int previousStation { get; private set; } = -1;
         public string currentStationURL { get { return streamURLs[currentStation]; }}
         
@@ -93,6 +95,9 @@ namespace NetRadio
 
         public float connectionTime = 0f;
         public float metadataTimeOffset = 0f;
+
+        //public static bool deviceChanged = false;
+        //private bool trackingAudioDevice = false;
         
         //public CancellationTokenSource cts; 
         //Regex metaRegex = new Regex(@"/(?<=\')(.*?)(?=\')/");
@@ -103,12 +108,21 @@ namespace NetRadio
                 NetRadioSettings.LoadURLs(); 
                 new NetRadioSaveData();
             }
+            //UnityEngine.AudioSettings.OnAudioConfigurationChanged += (v) => deviceChanged = v;
         }
 
         void Update() {
             if (spatialize) { CalculateSpatial(); }
-        }
 
+            if (playing && ffmpegReader != null) {
+                if ((ffmpegReader.Position + 150 >= ffmpegReader.Length && ffmpegReader.Length != 0 && ffmpegReader.CanSeek)) {
+                    StopRadio();
+                }
+            }
+
+            //Log.LogInfo(ffmpegReader.Position);
+            //Log.LogInfo(ffmpegReader.Length);
+        }
         void OnDestroy() {
             //Instances.Remove(this);
             StopRadio();
@@ -119,6 +133,7 @@ namespace NetRadio
         }
 
         private void DisposeOfReaders() {
+            stopped = true;
             /* try { if (mediaFoundationReader != null) { mediaFoundationReader.Dispose(); }
             } catch (System.Exception ex) { Log.LogError(ex); } */
             mediaFoundationReader = null;
@@ -128,9 +143,9 @@ namespace NetRadio
             /* try { if (ffmpegReaderMono != null) { ffmpegReaderMono.Dispose(); }
             } catch (System.Exception ex) { Log.LogError(ex); } */
             ffmpegReaderMono = null; 
-            try { if (waveOut != null) { waveOut.Dispose(); }
+            try { if (directSoundOut != null) { directSoundOut.Dispose(); }
             } catch (System.Exception ex) { Log.LogError(ex); }
-            waveOut = null;
+            directSoundOut = null;
             try { if (waveOutMono != null) { waveOutMono.Dispose(); }
             } catch (System.Exception ex) { Log.LogError(ex); }
             waveOutMono = null;
@@ -145,11 +160,12 @@ namespace NetRadio
         public void Stop() { StopRadio(); }
 
         public void Resume() { 
-            if (waveOut != null) { waveOut.Play(); }
+            if (directSoundOut != null) { directSoundOut.Play(); }
             if (waveOutMono != null) { waveOutMono.Play(); }
         }
         public void Pause() {
-            if (waveOut != null) { waveOut.Pause(); }
+            stopped = true;
+            if (directSoundOut != null) { directSoundOut.Pause(); }
             if (waveOutMono != null) { waveOutMono.Pause(); }
         }
 
@@ -157,7 +173,7 @@ namespace NetRadio
             NetRadioSettings.LoadURLs();
             NetRadioSettings.RefreshMusicApp();
             foreach (NetRadioManager radioManager in Resources.FindObjectsOfTypeAll<NetRadioManager>()) { 
-                if (radioManager != null && radioManager.currentStation >= 0 && radioManager.waveOut.PlaybackState != PlaybackState.Stopped) { 
+                if (radioManager != null && radioManager.currentStation >= 0 && radioManager.directSoundOut.PlaybackState != PlaybackState.Stopped) { 
                     radioManager.PlayRadioStation(radioManager.currentStation); 
                 }
             }
@@ -225,7 +241,7 @@ namespace NetRadio
         // StereoToMonoSampleProvider = StereoToMonoSource
         // PanningSampleProvider = PanSource
         // MeteringSampleProvider = PeakMeter
-        // waveOut.Init() = waveOut.Initialize()
+        // directSoundOut.Init() = directSoundOut.Initialize()
         // waveout functions and variables seem identical 
 
         private void PlayURLMF() {
@@ -261,10 +277,9 @@ namespace NetRadio
                 // add audio effects?
                 volumeSource = new VolumeSource(centerSource);
 
-                waveOut = new WaveOut(NetRadio.waveOutLatency);
-                waveOut.Initialize(new SampleToIeeeFloat32(volumeSource));
+                directSoundOut = InitializeSoundOut(volumeSource);
                 NetRadioPlugin.UpdateGlobalRadioVolume();
-                waveOut.Play();
+                directSoundOut.Play();
                 if (waveOutMono != null) { waveOutMono.Play(); }
             } 
             catch (System.Exception exception) { 
@@ -283,8 +298,12 @@ namespace NetRadio
 
             if (GlobalRadio == this && !spatialize && !failedToLoad) {
                 // metadata on separate connection, so let them run together
+                //StartCoroutine("TrackAudioDevice");
                 _= TrackMetadata(); //StartCoroutine(metadataCoroutine);
+                
             }
+
+            stopped = false;
         }
 
         private void PlayURL() {
@@ -324,15 +343,13 @@ namespace NetRadio
                     pannedMonoSource = new PanSource(monoVolumeSource);
                     
                     radioVolume = 0f;
-                    waveOutMono = new WaveOut(NetRadio.waveOutLatency);
+                    waveOutMono = new DirectSoundOut(NetRadio.waveOutLatency);
                     waveOutMono.Initialize(new SampleToIeeeFloat32(pannedMonoSource));
                 }
 
-                waveOut = new WaveOut(NetRadio.waveOutLatency);
-                //var buffer = new BufferSource(new SampleToIeeeFloat32(volumeSource), 200000);
-                waveOut.Initialize(new SampleToIeeeFloat32(volumeSource));
+                directSoundOut = InitializeSoundOut(volumeSource);
                 NetRadioPlugin.UpdateGlobalRadioVolume();
-                waveOut.Play();
+                directSoundOut.Play();
                 if (waveOutMono != null) { waveOutMono.Play(); }
 
                 connectionTime = Time.realtimeSinceStartup - realtimeAtStart;
@@ -352,8 +369,42 @@ namespace NetRadio
 
             if (GlobalRadio == this && !spatialize && !failedToLoad) {
                 // metadata on separate connection, so let them run together
+                //StartCoroutine("TrackAudioDevice");
                 _= TrackMetadata(); //StartCoroutine(metadataCoroutine);
+                
             }
+
+            stopped = false;
+        }
+
+        private async Task OutputStopped(PlaybackStoppedEventArgs args) {
+            Log.LogWarning("Stopped DirectSound output");
+            if (args.HasError) {
+                Exception exception = args.Exception;
+                Log.LogWarning(exception.Message);
+            }
+            
+            bool deviceChanged = !stopped; 
+            if (deviceChanged) {
+                Log.LogWarning("Output device changed");
+                //var ogSoundOut = directSoundOut;
+                await Task.Delay(500);
+                Log.LogWarning("Reconnecting?");
+                PlayRadioStation(currentStation);
+                AppNetRadio.PlayNoise();
+                //ogSoundOut.Dispose();
+            }
+        }
+
+        private DirectSoundOut InitializeSoundOut(ISampleSource source, DirectSoundOut original = null) { 
+            return InitializeSoundOut(new SampleToIeeeFloat32(source), original); 
+        }
+
+        private DirectSoundOut InitializeSoundOut(IWaveSource source, DirectSoundOut original = null) {
+            DirectSoundOut returnOut = original == null ? new DirectSoundOut(NetRadio.waveOutLatency) : original;
+            returnOut.Stopped += (a, b) => _=OutputStopped(b);
+            returnOut.Initialize(source);
+            return returnOut;
         }
 
         /* private void PlayURLNAudio() {
@@ -387,10 +438,10 @@ namespace NetRadio
                     waveOutMono.Init(pannedMonoSampleProvider);
                 }
 
-                waveOut = new WaveOutEvent();
-                waveOut.Init(volumeSampleProvider);
+                directSoundOut = new WaveOutEvent();
+                directSoundOut.Init(volumeSampleProvider);
                 
-                waveOut.Play();
+                directSoundOut.Play();
                 if (waveOutMono != null) { waveOutMono.Play(); }
             } 
             catch (System.Exception exception) { 
@@ -441,10 +492,10 @@ namespace NetRadio
                         waveOutMono.Init(pannedMonoSampleProvider);
                     } 
 
-                    waveOut = new WaveOutEvent();
-                    waveOut.Init(volumeSampleProvider);
+                    directSoundOut = new WaveOutEvent();
+                    directSoundOut.Init(volumeSampleProvider);
                     
-                    waveOut.Play();
+                    directSoundOut.Play();
                     if (waveOutMono != null) { waveOutMono.Play(); }
                 }
                 
@@ -468,10 +519,11 @@ namespace NetRadio
             //trackingMetadata = false;
             //if (metadataCoroutine != null) {  //    StopCoroutine(metadataCoroutine);  //}
             //    cts.Cancel();
+            stopped = true;
             trackingMetadata = false;
             currentMetadata = "";
             currentSong = "Unknown Track";
-            if (waveOut != null) { waveOut.Stop(); }
+            if (directSoundOut != null) { directSoundOut.Stop(); }
             if (waveOutMono != null) { waveOutMono.Stop(); } 
         }
 
@@ -509,7 +561,7 @@ namespace NetRadio
                     float processingTime = Time.realtimeSinceStartup - realtimeAtStart;
                     if (currentMetadata != oldMetadata) {
                         metadataTimeOffset = connectionTime - processingTime;
-                        Log.LogInfo(metadataTimeOffset + NetRadio.bufferTimeInSeconds);
+                        //Log.LogInfo("Delaying metadata update for" metadataTimeOffset + NetRadio.bufferTimeInSeconds);
                         metadataTimeOffset += NetRadio.bufferTimeInSeconds;
                         metadataTimeOffset *= 0.79f;
                         
@@ -526,6 +578,32 @@ namespace NetRadio
             }
             trackingMetadata = false; // cts.Cancel();
         }
+
+        /* private IEnumerator TrackAudioDevice() {
+            NetRadioManager radioManager = NetRadio.GlobalRadio;
+            //if (trackingAudioDevice) { return; }
+            trackingAudioDevice = true;
+            //deviceChanged = false;
+            while (trackingAudioDevice) {
+                Log.LogInfo("tracking...");
+                if (deviceChanged) {
+                    Log.LogWarning("Device change detected!");
+                    yield return new WaitForSeconds(0.1f);
+                    deviceChanged = false;
+                    yield return radioManager.HandleDeviceChange();
+                    Log.LogWarning("Device change detected!");
+                    //PlayRadioStation(currentStation);
+                    //break;
+                }
+                yield return null; //await Task.Delay(1000);
+            }
+        }
+
+         private bool HandleDeviceChange() {
+            directSoundOut = new DirectSoundOut(NetRadio.waveOutLatency);
+            directSoundOut.Initialize(new SampleToIeeeFloat32(volumeSource));
+            return true;
+        } */
 
         private void HandleMetadata(string originalMetadata) {
             string fallback = "Unknown Track";

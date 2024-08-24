@@ -69,6 +69,10 @@ namespace NetRadio
             }
         }
 
+        /* private void Start() {
+            new AudioDeviceMonitor();
+        } */
+
         private void OnDestroy() {
             Harmony.UnpatchSelf(); 
         }
@@ -81,10 +85,13 @@ namespace NetRadio
                 }
 
                 if (AppNetRadio.waveOut != null && AppNetRadio.playing) {
-                    if (NetRadio.GlobalRadio.failedToLoad) {
-                        StartCoroutine(AppNetRadio.Instance.HandleFailedConnection());
-                    } else if (NetRadio.GlobalRadio.playing) {
-                        StartCoroutine(AppNetRadio.Instance.StopIn(1f)); 
+                    if (NetRadio.PlayerUsingApp(typeof(AppNetRadio))) {
+                        if (NetRadio.GlobalRadio.failedToLoad) { StartCoroutine(AppNetRadio.Instance.HandleFailedConnection()); }
+                        else if (NetRadio.GlobalRadio.playing) { StartCoroutine(AppNetRadio.Instance.StopIn(1f)); }
+                    } else if (NetRadio.GlobalRadio.playing || NetRadio.GlobalRadio.failedToLoad) {
+                        NetRadio.GlobalRadio.failedToLoad = false;
+                        AppNetRadio.waveOut.Stop();
+                        AppNetRadio.playing = false;
                     }
                 }
             }

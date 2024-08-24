@@ -43,7 +43,7 @@ namespace NetRadio
 
         public const string PluginName = "NetRadio";
         public const string PluginGUID = "goatgirl.NetRadio";
-        public const string PluginVersion = "1.0.2";
+        public const string PluginVersion = "1.0.3";
 
         public static bool gameStarted = false;
 
@@ -56,8 +56,12 @@ namespace NetRadio
         public static List<string> hasRedir = new List<string>{};
 
         public static bool PlayerUsingMusicApp() {
+            return PlayerUsingApp(typeof(AppMusicPlayer));
+        }
+
+        public static bool PlayerUsingApp(Type checkAppType) {
             if (player == null || player.phone == null)  { return false; }
-            return (player.phone.m_CurrentApp is AppMusicPlayer && player.phone.IsOn && player.phoneLayerWeight >= 1f);
+            return (player.phone.m_CurrentApp.GetType() == checkAppType && player.phone.IsOn && player.phoneLayerWeight >= 1f);
         }
 
         public static bool pressedAnyButtonIn(List<KeyCode> keybinds) {
@@ -120,7 +124,7 @@ namespace NetRadio
                 var response = request.GetResponse();
                 string uri = response.ResponseUri.AbsoluteUri.ToString();
                 hasRedir.Add(uri);
-                Log.LogInfo("Updating internal station URL " + url + " - redirects to " + uri);
+                if (!uri.Equals(url)) { Log.LogInfo("Updating internal station URL " + url + " - redirects to " + uri); }
                 return uri;
             }
             catch(Exception) { 

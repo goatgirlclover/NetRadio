@@ -96,7 +96,6 @@ namespace NetRadio
         public override void OnAppEnable()
         {
             Instance = this;
-            base.OnAppEnable();
             lastSelectedButton = null;
             CreateAndSaveIconlessTitleBar(GlobalRadio.GetStationTitle(currentStationIndex));//CreateIconlessTitleBar(appName);
             justCopied = false;
@@ -108,14 +107,16 @@ namespace NetRadio
             float volumeHund = volumeMultiplier * 100f;
             volumeInPercent = 5 * (int)Math.Round(volumeHund / 5.0);
 
-            var blankButton = AppNetRadio.CreateHeaderButton("Now playing"); 
+            var blankButton = AppNetRadio.CreateHeaderButton(AppNetRadio.currentNowPlayingText, AppNetRadio.currentNowPlayingHeight); 
             ScrollView.AddButton(blankButton);
+            AppNetRadio.UpdateNowPlayingButton(blankButton, ScrollView, true);
 
             if (GlobalRadio.playing && GlobalRadio.currentStation == currentStationIndex) {
                 var firstButton = PhoneUIUtility.CreateSimpleButton("Disconnect...");
                 firstButton.OnConfirm += () => {
                     GlobalRadio.Stop();
-                    musicPlayer.PlayFrom(musicPlayer.CurrentTrackIndex, 0);
+                    if (AppNetRadio.musicPlayerWasInterrupted) { musicPlayer.PlayFrom(musicPlayer.CurrentTrackIndex, 0); }
+                    else { musicPlayer.PlayFrom(0, 0); }
                     MyPhone.OpenApp(typeof(AppNetRadio));
                 };
                 ScrollView.AddButton(firstButton);
@@ -146,6 +147,8 @@ namespace NetRadio
                 }
             };
             ScrollView.AddButton(nextButton);
+
+            base.OnAppEnable();
         }
 
         public IEnumerator ConnectToStation() {
@@ -182,14 +185,9 @@ namespace NetRadio
 
             foreach (SimplePhoneButton button in ScrollView.Buttons) {
                 if (IsHeaderButton(button)) {
-                    if (button.Label.text.Contains("Now playing")) {
-                        string musicPlayerTrack = musicPlayer.musicTrackQueue.CurrentMusicTrack.Artist + " - " + musicPlayer.musicTrackQueue.CurrentMusicTrack.Title;
-                        string nowPlaying = GlobalRadio.playing ? GlobalRadio.currentSong : musicPlayerTrack;
-                        button.Label.text = "Now playing " + nowPlaying;
-                        button.Label.alignment = TextAlignmentOptions.Center;
-                        button.ButtonImage.gameObject.RectTransform().sizeDelta = new Vector2(530f * 2f, button.Label.fontSize*button.Label.textInfo.lineCount - 10f);
-                    }
+                    AppNetRadio.UpdateNowPlayingButton(button, ScrollView);
                     button.PlayDeselectAnimation(true);
+                    //Log.LogInfo(button.Height);
                 } else if (button.Label.text.Contains("Volume:")) {
                     button.Label.text = "Volume: " + volumeInPercent + "%"; 
                     SetLabelColor(button, changingVolume ? Color.green : Color.clear);
@@ -280,6 +278,7 @@ namespace NetRadio
         private static FfmpegDecoder ffmpegReader;
         public static WaveOut waveOut;
         private static VolumeSource volumeSource; 
+        private static SampleToIeeeFloat32 converter;
 
         public static Sprite SelectedButtonSprite;
         public static Sprite UnselectedButtonSprite;
@@ -327,6 +326,9 @@ namespace NetRadio
         public static PhoneButton lastSelectedButton;
         public static bool loaded = false;
 
+        public static string currentNowPlayingText = "Now playing";
+        public static float currentNowPlayingHeight = 100f;
+
         public static void Initialize() { 
             IconSprite = LoadSprite(Path.Combine(dataDirectory, "icon.png")); 
             PhoneAPI.RegisterApp<AppNetRadio>(appName, IconSprite); 
@@ -334,7 +336,7 @@ namespace NetRadio
             ffmpegReader = new FfmpegDecoder(Path.Combine(dataDirectory, "Tuning.mp3"));
             volumeSource = new VolumeSource(WaveToSampleBase.CreateConverter(ffmpegReader));
             waveOut = new WaveOut(NetRadio.waveOutLatency);
-            waveOut.Initialize(new SampleToIeeeFloat32(volumeSource));
+            converter = new SampleToIeeeFloat32(volumeSource);
 
             SelectedButtonSprite = LoadSprite(Path.Combine(dataDirectory, "SimpleButton-Selected.png"));
             UnselectedButtonSprite = LoadSprite(Path.Combine(dataDirectory, "SimpleButton.png"));
@@ -423,15 +425,16 @@ namespace NetRadio
             realTime = 0f;
             //normalButtonIndexOffset = 0;
             filteredButtons.Clear();
-            runPrefix = false;
+            //runPrefix = false;
             // add non-station buttons
             /* var normalButton = CreateSimpleButton("TEST");
             normalButton.OnConfirm += () => {};
             ScrollView.AddButton(normalButton); */
-            runPrefix = true;
+            //runPrefix = true;
 
-            var blankButton = CreateHeaderButton("Now playing"); 
+            var blankButton = CreateHeaderButton(AppNetRadio.currentNowPlayingText, AppNetRadio.currentNowPlayingHeight); 
             ScrollView.AddButton(blankButton);
+            AppNetRadio.UpdateNowPlayingButton(blankButton, ScrollView, true);
 
             int i = -1;
             int numberOfCustomStreams = 0;
@@ -446,12 +449,12 @@ namespace NetRadio
                 nextButton.OnConfirm += () => {
                     if (GlobalRadio.threadRunning) { return; }
 
-                    if (filteredButtons.IndexOf(nextButton) == GlobalRadio.currentStation || !NetRadioSettings.configureRequireConnection.Value) {
+                    if ((GlobalRadio.playing && filteredButtons.IndexOf(nextButton) == GlobalRadio.currentStation) || !NetRadioSettings.configureRequireConnection.Value) {
                         AppSelectedStation.currentStationIndex = filteredButtons.IndexOf(nextButton);
                         MyPhone.OpenApp(typeof(AppSelectedStation));
                         return;
                     }
-
+                        
                     AttemptConnection(filteredButtons.IndexOf(nextButton));
                 };
                 ScrollView.AddButton(nextButton);
@@ -474,11 +477,20 @@ namespace NetRadio
 
             musicPlayer.ForcePaused();
             GlobalRadio.Play(index); //NetRadioPlugin.GlobalRadio.streamURLs.IndexOf(urlLabels[i].text));//(nextButton.Label.text));
+        
+            PlayNoise();
+            StartCoroutine(Instance.ClearButtons()); 
+        }
+
+        public static void PlayNoise() {
+            if (volumeSource != null) { //if (waveOut.PlaybackState == PlaybackState.Playing) {
+                volumeSource.Volume = radioMusicVolume;
+            } 
             
             ffmpegReader.Position = 0;
-            playing = true;
+            waveOut.Initialize(converter);
             waveOut.Play();
-            StartCoroutine(Instance.ClearButtons()); 
+            playing = true;
         }
 
         private IEnumerator ClearButtons() {
@@ -586,12 +598,8 @@ namespace NetRadio
                 if (!IsStationButton(button)) { 
                     filteredButtons.Remove(button);
                     if (IsHeaderButton(button)) {
-                        if (button.Label.text.Contains("Now playing")) {
-                            string musicPlayerTrack = musicPlayer.musicTrackQueue.CurrentMusicTrack.Artist + " - " + musicPlayer.musicTrackQueue.CurrentMusicTrack.Title;
-                            string nowPlaying = GlobalRadio.playing ? GlobalRadio.currentSong : musicPlayerTrack;
-                            button.Label.text = "Now playing " + nowPlaying;
-                            button.Label.alignment = TextAlignmentOptions.Center;
-                            button.ButtonImage.gameObject.RectTransform().sizeDelta = new Vector2(530f * 2f, button.Label.fontSize*button.Label.textInfo.lineCount - 10f);
+                        if (ScrollView.Buttons.IndexOf(button) == 0) {
+                            AppNetRadio.UpdateNowPlayingButton(button, ScrollView);
                         }
                         button.PlayDeselectAnimation(true);
                         //button.AnimationParent.transform.localPosition = new Vector3 (0f, button.gameObject.transform.localPosition.y, 0f); 
@@ -686,6 +694,7 @@ namespace NetRadio
 
         public override void OnAppInit()
         {
+            Instance = this;
             loaded = false;
             base.OnAppInit();
             CreateTitleBar(appName, IconSprite);//CreateIconlessTitleBar(appName);
@@ -697,17 +706,47 @@ namespace NetRadio
             return PhoneUIUtility.CreateSimpleButton(label); 
         }
 
-        public static SimplePhoneButton CreateHeaderButton(string label) {
+        public static SimplePhoneButton CreateHeaderButton(string label, float height = 100f) {
             runPrefix = false;
             var button = PhoneUIUtility.CreateSimpleButton(label);
             var titleLabel = button.Label;
             var headerSig = new GameObject("Header");
             headerSig.transform.SetParent(titleLabel.gameObject.transform, false);
             //normalButtonIndexOffset++;
+            button.ButtonImage.gameObject.RectTransform().sizeDelta = new Vector2(530f * 2f, height);
             titleLabel.transform.localPosition += new Vector3 (-70f, 0f, 0f);
-            button.ButtonImage.gameObject.RectTransform().sizeDelta = new Vector2(530f * 2f, 100f);
             runPrefix = true;
             return button;
+        }
+
+        public static void UpdateNowPlayingButton(SimplePhoneButton button, PhoneScrollView scrollView, bool skipCheck = false) {
+            var rTransform = button.ButtonImage.gameObject.RectTransform();
+            string previousText = button.Label.text;
+            float previousHeight = rTransform.sizeDelta.y;
+
+            bool playingAnything = GlobalRadio.playing || musicPlayer.IsPlaying;
+            if (!playingAnything) { 
+                button.Label.text = "";
+            } else {
+                string musicPlayerTrack = musicPlayer.musicTrackQueue.CurrentMusicTrack.Artist + " - " + musicPlayer.musicTrackQueue.CurrentMusicTrack.Title;
+                string nowPlaying = GlobalRadio.playing ? GlobalRadio.currentSong : musicPlayerTrack;
+                button.Label.text = "Now playing " + nowPlaying;
+                button.Label.alignment = TextAlignmentOptions.Center;
+            }
+
+            float width = rTransform.sizeDelta.x;
+            float height = button.Label.fontSizeMin*button.Label.textInfo.lineCount;
+            if (height == 0) { height -= scrollView.Separation; }
+            rTransform.sizeDelta = new Vector2(width, height);
+            
+            if (height != previousHeight && !skipCheck) { 
+                scrollView.UpdateButtons(); 
+                //Log.LogInfo("Updating button height");
+                //Log.LogInfo(height);
+            }
+
+            currentNowPlayingText = button.Label.text;
+            if (height > 0) { currentNowPlayingHeight = button.Height; }
         }
 
         private static SimplePhoneButton CreateStationButton(string label, string url) {
