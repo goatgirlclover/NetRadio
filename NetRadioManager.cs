@@ -610,7 +610,7 @@ namespace NetRadio
             if (!string.IsNullOrWhiteSpace(originalMetadata) && originalMetadata.Contains(@"StreamTitle='") && !originalMetadata.Contains(@"StreamTitle=''")) {
                 /* string[] splitMeta = originalMetadata.Split(new[]{ @"'" }, StringSplitOptions.RemoveEmptyEntries);
                 string simpleMetadata = splitMeta.Length > 2 ? splitMeta[1] : fallback; //originalMetadata; */
-                string simpleMetadata = Regex.Match(originalMetadata, @"(?:StreamTitle=')(.*?)(?:')", RegexOptions.Singleline | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant).Groups[1].Value;
+                string simpleMetadata = Regex.Match(originalMetadata, @"(?:StreamTitle=')(.*)(?:')[;,= ]", RegexOptions.Singleline | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant).Groups[1].Value;
                 currentSong = simpleMetadata.Trim();
             } else { 
                 currentSong = fallback; 
