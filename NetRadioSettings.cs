@@ -29,7 +29,7 @@ namespace NetRadio
 
         // appended to start of station list
         public const string partneredStations = @"
-            (FunkyUncleFM)https://fancynoise.net:8443/fufm.mp3,
+            (FunkyUncleFM)https://funkyunclefm.net:8443/fufm,
         ";
 
         // appended to end of station list
