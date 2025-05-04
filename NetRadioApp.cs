@@ -20,6 +20,7 @@ using CSCore.Ffmpeg;
 using CSCore.SoundOut; 
 using TMPro;
 using static NetRadio.NetRadio;
+using NetRadio.Metadata;
 
 namespace NetRadio
 {
@@ -148,6 +149,8 @@ namespace NetRadio
             };
             ScrollView.AddButton(nextButton);
 
+            _= GetStationMetadata(); 
+            
             base.OnAppEnable();
         }
 
@@ -159,6 +162,22 @@ namespace NetRadio
                 yield return null;
             }
             AppNetRadio.Instance.AttemptConnection(station);
+        }
+
+        public async Task GetStationMetadata() {
+            IcecastStatus currentInfo = !(GlobalRadio.playing && GlobalRadio.currentStation == currentStationIndex)
+                                        ? await GlobalRadio.GetMetadata(GlobalRadio.streamURLs[currentStationIndex])
+                                        : GlobalRadio.currentMetadata;
+            Metadata.Source stationInfo = currentInfo.icestats.source; 
+
+            var nextButton = AppNetRadio.CreateHeaderButton("Listeners: " + stationInfo.listeners, 75f);
+            ScrollView.AddButton(nextButton);
+            nextButton = AppNetRadio.CreateHeaderButton("Peak listeners: " + stationInfo.listener_peak, 75f);
+            ScrollView.AddButton(nextButton);
+            nextButton = AppNetRadio.CreateHeaderButton("Genre: " + stationInfo.genre, 75f);
+            ScrollView.AddButton(nextButton);
+            nextButton = AppNetRadio.CreateHeaderButton("Streaming since " + stationInfo.stream_start);
+            ScrollView.AddButton(nextButton);
         }
 
         public override void OnAppUpdate() {
@@ -185,7 +204,9 @@ namespace NetRadio
 
             foreach (SimplePhoneButton button in ScrollView.Buttons) {
                 if (IsHeaderButton(button)) {
-                    AppNetRadio.UpdateNowPlayingButton(button, ScrollView);
+                    if (ScrollView.Buttons.IndexOf(button) == 0) { 
+                        AppNetRadio.UpdateNowPlayingButton(button, ScrollView); 
+                    }
                     button.PlayDeselectAnimation(true);
                     //Log.LogInfo(button.Height);
                 } else if (button.Label.text.Contains("Volume:")) {

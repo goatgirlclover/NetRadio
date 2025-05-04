@@ -43,7 +43,7 @@ namespace NetRadio
             Harmony.PatchAll(); 
             Logger.LogInfo($"Plugin " + NetRadio.PluginName + " is loaded!");
 
-            NetRadio.GlobalRadio = NetRadioManager.CreateRadio(this.transform, false, false);
+            NetRadio.GlobalRadio = NetRadioManager.CreateRadio(this.transform);
             NetRadio.GlobalRadio.volume = 1.0f;
             
             AppNetRadio.Initialize();

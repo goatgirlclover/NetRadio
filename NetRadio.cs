@@ -51,7 +51,7 @@ namespace NetRadio
         public static Color LabelUnselectedColorDefault = Color.white;
 
         public static int waveOutLatency = 50;
-        public static float bufferTimeInSeconds {get { return NetRadioSettings.extraBufferSec.Value; }}
+        public static float bufferTimeInSeconds { get { return NetRadioSettings.extraBufferSec.Value; }}
 
         public static List<string> hasRedir = new List<string>{};
 
@@ -111,7 +111,6 @@ namespace NetRadio
             return null;
         }
 
-        
         public static string GetRedirectedURL(string url)
         {
             try
