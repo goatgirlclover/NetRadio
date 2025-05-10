@@ -47,6 +47,24 @@ namespace NetRadio
             overlayInstance = newOverlay;
         }
 
+        public void CreateAndSaveTitleBar(string title, Sprite icon, float fontSize = 80f) {
+            var sourceApp = MyPhone.GetAppInstance<AppGraffiti>();
+            var overlay = sourceApp.transform.Find("Overlay");
+            var newOverlay = GameObject.Instantiate(overlay);
+            var icons = newOverlay.transform.Find("Icons");
+            icons.Find("GraffitiIcon").GetComponent<Image>().sprite = icon;
+            var header = icons.Find("HeaderLabel");
+            Component.Destroy(header.GetComponent<TMProLocalizationAddOn>());
+            var tmpro = header.GetComponent<TextMeshProUGUI>();
+            tmpro.text = title;
+            tmpro.fontSize = fontSize;
+            tmpro.fontSizeMax = fontSize;
+            //tmpro.fontSizeMin = fontSize;
+            newOverlay.SetParent(transform, false);
+
+            overlayInstance = newOverlay; 
+        }
+
         public override void OnPressUp() { // if selected the 2nd one and the top one is a blank header, don't bother
             int currentIndex = ScrollView.SelectedIndex;
             int nextIndex = currentIndex - 1;
@@ -98,7 +116,7 @@ namespace NetRadio
         {
             Instance = this;
             lastSelectedButton = null;
-            CreateAndSaveIconlessTitleBar(GlobalRadio.GetStationTitle(currentStationIndex));//CreateIconlessTitleBar(appName);
+            CreateAndSaveTitleBar(GlobalRadio.GetStationTitle(currentStationIndex), AppNetRadio.UnselectedAntennaSprites[2]);//CreateIconlessTitleBar(appName);
             justCopied = false;
             changingVolume = false;
             time = 0.0f;
@@ -168,7 +186,7 @@ namespace NetRadio
             IcecastStatus currentInfo = !(GlobalRadio.playing && GlobalRadio.currentStation == currentStationIndex)
                                         ? await GlobalRadio.GetMetadata(GlobalRadio.streamURLs[currentStationIndex])
                                         : GlobalRadio.currentMetadata;
-            Metadata.Source stationInfo = currentInfo.icestats.source; 
+            Metadata.Source stationInfo = currentInfo.icestats.source[0]; 
 
             var nextButton = AppNetRadio.CreateHeaderButton("Listeners: " + stationInfo.listeners, 75f);
             ScrollView.AddButton(nextButton);
@@ -192,7 +210,7 @@ namespace NetRadio
                     if (IsHeaderButton((SimplePhoneButton)ScrollView.Buttons[ScrollView.SelectedIndex])) {
                         m_AudioManager.audioSources[3].Stop();
                         int indexOfLastButton = ScrollView.Buttons.IndexOf(lastSelectedButton);
-                        if (indexOfLastButton > ScrollView.SelectedIndex) { // 
+                        if (indexOfLastButton < ScrollView.SelectedIndex) { // 
                             ScrollView.OnPressUp();
                         } else {
                             ScrollView.OnPressDown();
@@ -206,7 +224,7 @@ namespace NetRadio
                 if (IsHeaderButton(button)) {
                     if (ScrollView.Buttons.IndexOf(button) == 0) { 
                         AppNetRadio.UpdateNowPlayingButton(button, ScrollView); 
-                    }
+                    } else { AppNetRadio.UpdateDynamicButtonHeight(button, ScrollView); }
                     button.PlayDeselectAnimation(true);
                     //Log.LogInfo(button.Height);
                 } else if (button.Label.text.Contains("Volume:")) {
@@ -581,7 +599,7 @@ namespace NetRadio
                     if (IsHeaderButton((SimplePhoneButton)ScrollView.Buttons[ScrollView.SelectedIndex])) {
                         m_AudioManager.audioSources[3].Stop();
                         int indexOfLastButton = ScrollView.Buttons.IndexOf(lastSelectedButton);
-                        if (indexOfLastButton > ScrollView.SelectedIndex) { // 
+                        if (indexOfLastButton < ScrollView.SelectedIndex) { // 
                             ScrollView.OnPressUp();
                         } else {
                             ScrollView.OnPressDown();
@@ -741,10 +759,7 @@ namespace NetRadio
         }
 
         public static void UpdateNowPlayingButton(SimplePhoneButton button, PhoneScrollView scrollView, bool skipCheck = false) {
-            var rTransform = button.ButtonImage.gameObject.RectTransform();
             string previousText = button.Label.text;
-            float previousHeight = rTransform.sizeDelta.y;
-
             bool playingAnything = GlobalRadio.playing || musicPlayer.IsPlaying;
             if (!playingAnything) { 
                 button.Label.text = "";
@@ -755,6 +770,14 @@ namespace NetRadio
                 button.Label.alignment = TextAlignmentOptions.Center;
             }
 
+            currentNowPlayingText = button.Label.text;
+            UpdateDynamicButtonHeight(button, scrollView, skipCheck);
+            if (button.ButtonImage.gameObject.RectTransform().sizeDelta.y > 0) { currentNowPlayingHeight = button.Height; }
+        }
+
+        public static void UpdateDynamicButtonHeight(SimplePhoneButton button, PhoneScrollView scrollView, bool skipCheck = false) {
+            var rTransform = button.ButtonImage.gameObject.RectTransform();
+            float previousHeight = rTransform.sizeDelta.y;
             float width = rTransform.sizeDelta.x;
             float height = button.Label.fontSizeMin*button.Label.textInfo.lineCount;
             if (height == 0) { height -= scrollView.Separation; }
@@ -765,9 +788,6 @@ namespace NetRadio
                 //Log.LogInfo("Updating button height");
                 //Log.LogInfo(height);
             }
-
-            currentNowPlayingText = button.Label.text;
-            if (height > 0) { currentNowPlayingHeight = button.Height; }
         }
 
         private static SimplePhoneButton CreateStationButton(string label, string url) {

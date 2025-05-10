@@ -13,6 +13,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.IO;
 using System.Text.RegularExpressions;
+using System.Net.Http;
 using Newtonsoft.Json;
 
 using CommonAPI;
@@ -89,6 +90,13 @@ namespace NetRadio
 
         //public static bool deviceChanged = false;
         //private bool trackingAudioDevice = false;
+
+        public static bool enableMetadataTracking = true;
+        private Task trackingMetadataTask;
+
+        private long oldPosition = -100;
+        private int amountOfTimesFoundAtSamePosition = 0;
+        public bool skipDisposal = false;
         
         private void Start() { 
             Log.LogInfo("Loaded radio manager");
@@ -99,44 +107,52 @@ namespace NetRadio
             //UnityEngine.AudioSettings.OnAudioConfigurationChanged += (v) => deviceChanged = v;
         }
 
-        /*void Update() {
-            if (playing && ffmpegReader != null) {
-                if ((ffmpegReader.Position + 150 >= ffmpegReader.Length && ffmpegReader.Length != 0 && ffmpegReader.CanSeek)) {
-                    StopRadio();
+        void FixedUpdate() {
+            if (directSoundOut != null && ffmpegReader != null) {
+                if (playing) {
+                    if ((ffmpegReader.Position + 150 >= ffmpegReader.Length && ffmpegReader.Length != 0 && ffmpegReader.CanSeek)) {
+                        StopRadio();
+                    }
+                    
+                    if (ffmpegReader.Position == oldPosition && ffmpegReader.Position > 300000) { 
+                        amountOfTimesFoundAtSamePosition++;
+                        if (amountOfTimesFoundAtSamePosition > 10) { 
+                            StopRadio(); 
+                            amountOfTimesFoundAtSamePosition = 0;
+                            skipDisposal = true;
+                        }
+                    } else {
+                        amountOfTimesFoundAtSamePosition = 0;
+                    }
+                    oldPosition = ffmpegReader.Position;
                 }
             }
+        }
 
-            //Log.LogInfo(ffmpegReader.Position);
-            //Log.LogInfo(ffmpegReader.Length);
-        }*/
-
-        void OnDestroy() {
+        void OnDisable() {
             //Instances.Remove(this);
             StopRadio();
-            if (playURLChildThread != null) { playURLChildThread.Abort(); }
-            if (playURLThread != null) { playURLThread.Abort(); }
+            /*if (playURLChildThread != null) { playURLChildThread.Abort(); }
+            if (playURLThread != null) { playURLThread.Abort(); }*/
             trackingMetadata = false;
             stopped = true;
-            //DisposeOfReaders();
+            
+            trackingMetadataTask.Wait();
+            trackingMetadataTask.Dispose(); 
+            DisposeOfReaders();
         }
 
         private void DisposeOfReaders() {
-            /* try { if (mediaFoundationReader != null) { mediaFoundationReader.Dispose(); }
-            } catch (System.Exception ex) { Log.LogError(ex); } */
+            try { if (mediaFoundationReader != null) { mediaFoundationReader.Dispose(); }
+            } catch (System.Exception ex) { Log.LogError(ex); } 
             mediaFoundationReader = null;
-            /* try { if (ffmpegReader != null) { ffmpegReader.Dispose(); }
-            } catch (System.Exception ex) { Log.LogError(ex); } */
+            try { if (ffmpegReader != null) { ffmpegReader.Dispose(); }
+            } catch (System.Exception ex) { Log.LogError(ex); } 
             ffmpegReader = null;
-            /* try { if (ffmpegReaderMono != null) { ffmpegReaderMono.Dispose(); }
-            } catch (System.Exception ex) { Log.LogError(ex); } */
-            //ffmpegReaderMono = null; 
             try { if (directSoundOut != null) { directSoundOut.Dispose(); }
             } catch (System.Exception ex) { Log.LogError(ex); }
             directSoundOut = null;
-            /*try { if (waveOutMono != null) { waveOutMono.Dispose(); }
-            } catch (System.Exception ex) { Log.LogError(ex); }
-            waveOutMono = null;*/
-
+        
             if (m_httpClient != null) { m_httpClient.Dispose(); }
         }
 
@@ -274,10 +290,11 @@ namespace NetRadio
                 }
             }
 
-            if (GlobalRadio == this && !failedToLoad) {
+            if (GlobalRadio == this && !failedToLoad && !trackingMetadata) {
                 // metadata on separate connection, so let them run together
                 //StartCoroutine("TrackAudioDevice");
-                failedToLoad = false; //_= TrackMetadata(); //StartCoroutine(metadataCoroutine);
+                if (trackingMetadataTask != null) { trackingMetadataTask.Wait(); } 
+                trackingMetadataTask = TrackMetadata(); //StartCoroutine(metadataCoroutine);
                 
             }
 
@@ -288,7 +305,8 @@ namespace NetRadio
             CheckForRedirection();
 
             try {
-                DisposeOfReaders();
+                if (!skipDisposal) { DisposeOfReaders(); }
+                skipDisposal = false;
                 m_httpClient = CreateHTTPClient();
 
                 float realtimeAtStart = Time.realtimeSinceStartup;
@@ -328,10 +346,11 @@ namespace NetRadio
                 //currentStation = -1;
             }
 
-            if (GlobalRadio == this && !failedToLoad) {
+            if (GlobalRadio == this && !failedToLoad && !trackingMetadata) {
                 // metadata on separate connection, so let them run together
                 //StartCoroutine("TrackAudioDevice");
-                _= TrackMetadata(); //StartCoroutine(metadataCoroutine);
+                if (trackingMetadataTask != null) { trackingMetadataTask.Wait(); } 
+                trackingMetadataTask = TrackMetadata(); //StartCoroutine(metadataCoroutine);
                 
             }
 
@@ -391,6 +410,7 @@ namespace NetRadio
         }
 
         private async Task TrackMetadata() {
+            if (!enableMetadataTracking) { return; }
             //if (m_httpClient == null) { m_httpClient = CreateHTTPClient(); }
             trackingMetadata = true;
 
@@ -400,36 +420,43 @@ namespace NetRadio
             
             while (trackingMetadata && playing) {
                 if (!string.IsNullOrWhiteSpace(currentStationURL)) { 
-                    float realtimeAtStart = Time.realtimeSinceStartup;
-                    currentMetadata = await GetMetaDataFromIceCastStream(currentStationURL); 
-                    float processingTime = Time.realtimeSinceStartup - realtimeAtStart;
-                    if (currentMetadata != oldMetadata) {
-                        metadataTimeOffset = connectionTime - processingTime;
-                        metadataTimeOffset += NetRadio.bufferTimeInSeconds;                        
-                        if (metadataTimeOffset > 0f && looped) { 
-                            await Task.Delay((int)(metadataTimeOffset*1000)); 
+                    try {
+                        float realtimeAtStart = Time.realtimeSinceStartup;
+                        currentMetadata = await GetMetaDataFromIceCastStream(currentStationURL); 
+                        float processingTime = Time.realtimeSinceStartup - realtimeAtStart;
+                        if (currentMetadata != oldMetadata) {
+                            /*metadataTimeOffset = connectionTime - processingTime;
+                            metadataTimeOffset += NetRadio.bufferTimeInSeconds;                        
+                            if (metadataTimeOffset > 0f && looped) { 
+                                await Task.Delay((int)(metadataTimeOffset*1000)); 
+                            }*/
+                            HandleMetadata(currentMetadata); 
+                            oldMetadata = currentMetadata;
+                            looped = true;
                         }
-                        HandleMetadata(currentMetadata); 
-                        oldMetadata = currentMetadata;
-                        looped = true;
+                    } catch (System.Exception exception) {
+                        Log.LogError($"Error tracking metadata: {exception.Message}"); 
+                        Log.LogError(exception.StackTrace); 
                     }
+                    
                 }  
                 //Log.LogInfo(currentMetadata);
-                await Task.Delay(2000);
-                await Task.Yield(); //yield return null;
+                await Task.Delay(2000); //await Task.Yield(); //yield return null;
             }
 
             trackingMetadata = false; // cts.Cancel();
         }
 
         private void HandleMetadata(IcecastStatus originalMetadata) {
-            currentSong = originalMetadata.icestats.source.title;
+            if (!playing) { return; }
+            currentSong = originalMetadata.icestats.source[0].title;
             Log.LogInfo("Metadata updated for station " + GetStationTitle() + ": " + currentSong);
             NetRadioPlugin.UpdateCurrentSong();
         }
 
         private System.Net.Http.HttpClient CreateHTTPClient() { //private async Task<System.Net.Http.HttpClient> CreateHTTPClient() {
             var httpClient = new System.Net.Http.HttpClient();
+            httpClient.DefaultRequestHeaders.Add("Icy-MetaData", "1");
             httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("C# App (BRC NetRadio)");
             httpClient.Timeout = TimeSpan.FromSeconds(10);
             return httpClient;
@@ -438,14 +465,33 @@ namespace NetRadio
         private async Task<IcecastStatus> GetMetaDataFromIceCastStream(string url) {
             if (url == null) { return null; }
 
-            Uri uri = new Uri(url);    
-            string baseUrl = uri.GetLeftPart(System.UriPartial.Authority).ToString();
-            if (!baseUrl.EndsWith("/")) { baseUrl = baseUrl + "/"; }
-            string statusUrl = baseUrl + "status-json.xsl";
+            bool connected = false;
+            string responseString = "";
+            Uri uri = new Uri(url); 
+            do {   
+                string baseUrl = GetParentUriString(uri);
+                if (!baseUrl.EndsWith("/")) { baseUrl = baseUrl + "/"; }
+                string statusUrl = baseUrl + "status-json.xsl";
+                Log.LogInfo(statusUrl); 
 
-            var response = await m_httpClient.GetStringAsync(statusUrl);
+                try { 
+                    var response = await m_httpClient.GetStringAsync(statusUrl);
+                    responseString = response.ToString();
+                    connected = true;
+                } catch (System.Exception exception) {
+                    if (exception is HttpRequestException) {
+                        if (uri.ToString() == baseUrl) { return null; } //fallback
+                        else { uri = new Uri(baseUrl); }
+                    }
+                    else { 
+                        Log.LogError($"Error getting metadata: {exception.Message}"); 
+                        Log.LogError(exception.StackTrace);  
+                    }
+                }
+            } while (connected == false);
+            
             try {
-                IcecastStatus icecastStatus = JsonConvert.DeserializeObject<IcecastStatus>(response.ToString());
+                IcecastStatus icecastStatus = JsonConvert.DeserializeObject<IcecastStatus>(responseString);
                 return icecastStatus; 
             } catch (System.Exception exception) {
                 Log.LogError($"Error getting metadata: {exception.Message}"); 

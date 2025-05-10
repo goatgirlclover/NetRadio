@@ -19,6 +19,7 @@ using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net;
+using System.Text;
 using CommonAPI;
 using CommonAPI.Phone;
 using CommonAPI.UI;
@@ -129,6 +130,22 @@ namespace NetRadio
             catch(Exception) { 
                 return null; 
             }
+        }
+
+        public static string GetParentUriString(Uri uri)
+        {            
+            StringBuilder parentName = new StringBuilder();
+            parentName.Append(uri.Scheme);            
+            parentName.Append("://");
+            parentName.Append(uri.Host);
+            if (uri.Port != -1) {
+                parentName.Append(":"); 
+                parentName.Append(uri.Port); 
+            }
+            for (int i = 0; i < uri.Segments.Length - 1; i++) {
+                parentName.Append(uri.Segments[i]);
+            }
+            return parentName.ToString();
         }
 
         /* public static void CheckInputLanguage() {
