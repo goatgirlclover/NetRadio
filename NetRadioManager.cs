@@ -30,44 +30,25 @@ namespace NetRadio
 {
     public class NetRadioManager : MonoBehaviour
     {
-        public List<string> streamURLs = new List<string> {}; /*
-            "https://stream2.magic-media.nl:1100/stream",
-        }; */
+        public List<string> streamURLs = new List<string> {};
 
         public FfmpegDecoder ffmpegReader;
         public DirectSoundOut directSoundOut;
         public VolumeSource volumeSource;
-
-        /*public VorbisWaveReader vorbisReader;
-        public VorbisWaveReader vorbisReaderMono;*/
-        public IWaveSource mediaFoundationReader;
-
-        // for spatial audio emulation
-        /*public FfmpegDecoder ffmpegReaderMono;
-        public DirectSoundOut waveOutMono;
-        public SampleAggregatorBase centerSource;
-        public VolumeSource monoSource; 
-        public VolumeSource monoVolumeSource; 
-        public PanSource pannedMonoSource; 
-        public bool spatialize = true;
-        public float minDistance = 0.5f;
-        public float maxDistance = 10f;
-        public float pan { get; private set; } = 0f;
-*/
+        //public IWaveSource mediaFoundationReader;
         public PeakMeter meter;
+
         public float streamSampleVolume { get; private set; } = 0f; //{ get { return meter.StreamVolume; }}
-
-        public float radioVolume { get { return volumeSource != null ? volumeSource.Volume : 0f; } 
-        set { 
-            if (volumeSource != null) { volumeSource.Volume = Mathf.Clamp01(value)*volume; }
-        }}
-
+        public float radioVolume { 
+            get { return volumeSource != null ? volumeSource.Volume : 0f; } 
+            set { if (volumeSource != null) { volumeSource.Volume = Mathf.Clamp01(value)*volume; } }
+        }
         public float volume = 1.0f; 
+
         public bool playing { 
             get { return directSoundOut != null ? directSoundOut.PlaybackState == PlaybackState.Playing : false; } 
             set { if (value == true) { Resume(); } else { Stop(); } } 
         }
-
         public bool stopped = false;
 
         public int currentStation { get; private set; } = -1;
@@ -83,16 +64,12 @@ namespace NetRadio
         private static System.Net.Http.HttpClient m_httpClient = null;
         public IcecastStatus currentMetadata;
         public string currentSong { get; private set; }
-        public bool trackingMetadata { get; private set; } = false;
-
         public float connectionTime = 0f;
         public float metadataTimeOffset = 0f;
 
-        //public static bool deviceChanged = false;
-        //private bool trackingAudioDevice = false;
-
         public static bool enableMetadataTracking = true;
         private Task trackingMetadataTask;
+        public bool trackingMetadata { get; private set; } = false;
 
         private long oldPosition = -100;
         private int amountOfTimesFoundAtSamePosition = 0;
@@ -104,7 +81,6 @@ namespace NetRadio
                 NetRadioSettings.LoadURLs(); 
                 new NetRadioSaveData();
             }
-            //UnityEngine.AudioSettings.OnAudioConfigurationChanged += (v) => deviceChanged = v;
         }
 
         void FixedUpdate() {
@@ -121,9 +97,7 @@ namespace NetRadio
                             amountOfTimesFoundAtSamePosition = 0;
                             skipDisposal = true;
                         }
-                    } else {
-                        amountOfTimesFoundAtSamePosition = 0;
-                    }
+                    } else { amountOfTimesFoundAtSamePosition = 0; }
                     oldPosition = ffmpegReader.Position;
                 }
             }
@@ -132,6 +106,7 @@ namespace NetRadio
         void OnDisable() {
             //Instances.Remove(this);
             StopRadio();
+            skipDisposal = false;
             /*if (playURLChildThread != null) { playURLChildThread.Abort(); }
             if (playURLThread != null) { playURLThread.Abort(); }*/
             trackingMetadata = false;
@@ -143,9 +118,9 @@ namespace NetRadio
         }
 
         private void DisposeOfReaders() {
-            try { if (mediaFoundationReader != null) { mediaFoundationReader.Dispose(); }
+            /*try { if (mediaFoundationReader != null) { mediaFoundationReader.Dispose(); }
             } catch (System.Exception ex) { Log.LogError(ex); } 
-            mediaFoundationReader = null;
+            mediaFoundationReader = null;*/
             try { if (ffmpegReader != null) { ffmpegReader.Dispose(); }
             } catch (System.Exception ex) { Log.LogError(ex); } 
             ffmpegReader = null;
@@ -164,13 +139,11 @@ namespace NetRadio
 
         public void Resume() { 
             if (directSoundOut != null) { directSoundOut.Play(); }
-            //if (waveOutMono != null) { waveOutMono.Play(); }
         }
 
         public void Pause() {
             stopped = true;
             if (directSoundOut != null) { directSoundOut.Pause(); }
-            //if (waveOutMono != null) { waveOutMono.Pause(); }
         }
 
         public static void ReloadAllStations() { // backup option for fixing syncing issues 
@@ -203,7 +176,6 @@ namespace NetRadio
                 }
                 
                 StopRadio();
-                //yield return new WaitForSeconds(0.2f);
                 previousStation = currentStation;
                 currentStation = streamIndex;
 
@@ -215,11 +187,10 @@ namespace NetRadio
         }
 
         private void StartPlayURL() {
-            //CheckForRedirection();    
-            var threadStart = NetRadioSettings.moreCodecs.Value ? new ThreadStart(PlayURLMF) : new ThreadStart(PlayURL);
+            var threadStart = new ThreadStart(PlayURL); //NetRadioSettings.moreCodecs.Value ? new ThreadStart(PlayURLMF) : new ThreadStart(PlayURL);
             playURLChildThread = new Thread(threadStart);
             playURLChildThread.Start();
-            if (!playURLChildThread.Join(new TimeSpan(0, 0, 11)))
+            if (!playURLChildThread.Join(new TimeSpan(0, 0, 15)))
             {    
                 failedToLoad = true;
                 playURLChildThread.Abort();
@@ -237,70 +208,6 @@ namespace NetRadio
             }  
         }
 
-        // NAUDIO TO CSCORE TRANSLATION
-        // using CSCore.Streams; using CSCore.Ffmpeg; using CSCore.SoundOut; using CSCore; using CSCore.Streams.SampleConverter;
-        // mediaFoundationReader = ffmpegReader (cross-platform, more format support)
-        // volumeSampleProvider = volumeSource
-        // waveprovider.ToSampleProvider() = WaveToSampleBase.CreateConverter(waveprovider)
-        // StereoToMonoSampleProvider = StereoToMonoSource
-        // PanningSampleProvider = PanSource
-        // MeteringSampleProvider = PeakMeter
-        // directSoundOut.Init() = directSoundOut.Initialize()
-        // waveout functions and variables seem identical 
-
-        private void PlayURLMF() {
-            CheckForRedirection();
-
-            try {
-                DisposeOfReaders();
-                m_httpClient = CreateHTTPClient();
-
-                float realtimeAtStart = Time.realtimeSinceStartup;
-                var mfReader = new CSCore.MediaFoundation.MediaFoundationDecoder(currentStationURL);
-                connectionTime = Time.realtimeSinceStartup - realtimeAtStart;
-                mediaFoundationReader = (IWaveSource)mfReader;
-
-                int bufferInt = mfReader.WaveFormat.SampleRate * mfReader.WaveFormat.BlockAlign;
-                bufferInt = (int)Mathf.Round((float)bufferInt * (float)NetRadio.bufferTimeInSeconds);
-                var buffer = new BufferSource(ffmpegReader, bufferInt);
-                
-                meter = new PeakMeter(WaveToSampleBase.CreateConverter(buffer));
-                meter.Interval = 50;
-                if (GlobalRadio == this) {
-                    meter.PeakCalculated += (s,e) => streamSampleVolume = meter.PeakValue;
-                }
-
-                volumeSource = new VolumeSource(meter);
-
-                directSoundOut = InitializeSoundOut(volumeSource);
-                NetRadioPlugin.UpdateGlobalRadioVolume();
-                directSoundOut.Play();
-            } 
-            catch (System.Exception exception) { 
-                if (currentStationURL.StartsWith("http://")) {
-                    streamURLs[currentStation] = currentStationURL.Replace("http://", "https://");
-                    PlayURLMF();
-                    return;
-                } else { 
-                    Log.LogError($"(Media Foundation) Error playing radio: {exception.Message}"); 
-                    Log.LogError(exception.StackTrace); 
-                    streamURLs[currentStation] = currentStationURL.Replace("https://", "http://");
-                    PlayURL();
-                    return;
-                }
-            }
-
-            if (GlobalRadio == this && !failedToLoad && !trackingMetadata) {
-                // metadata on separate connection, so let them run together
-                //StartCoroutine("TrackAudioDevice");
-                if (trackingMetadataTask != null) { trackingMetadataTask.Wait(); } 
-                trackingMetadataTask = TrackMetadata(); //StartCoroutine(metadataCoroutine);
-                
-            }
-
-            stopped = false;
-        }
-
         private void PlayURL() {
             CheckForRedirection();
 
@@ -310,23 +217,20 @@ namespace NetRadio
                 m_httpClient = CreateHTTPClient();
 
                 float realtimeAtStart = Time.realtimeSinceStartup;
-                var ffr = new FfmpegDecoder(currentStationURL);
+                ffmpegReader = new FfmpegDecoder(currentStationURL);
                 connectionTime = Time.realtimeSinceStartup - realtimeAtStart;
-                ffmpegReader = ffr;
                 
                 int bufferInt = ffmpegReader.WaveFormat.SampleRate * ffmpegReader.WaveFormat.BlockAlign;
                 bufferInt = (int)Mathf.Round((float)bufferInt * (float)NetRadio.bufferTimeInSeconds);
                 var buffer = new BufferSource(ffmpegReader, bufferInt);
-                //var mfReader = new CSCore.MediaFoundation.MediaFoundationDecoder(currentStationURL);
 
                 meter = new PeakMeter(WaveToSampleBase.CreateConverter(buffer));
                 meter.Interval = 50;
                 if (GlobalRadio == this) {
                     meter.PeakCalculated += (s,e) => streamSampleVolume = meter.PeakValue;
-                    // Log.LogInfo(meter.PeakValue);
                 }
 
-                volumeSource = new VolumeSource(meter); //spatialize ? new VolumeSource(centerSource) : new VolumeSource(meter);
+                volumeSource = new VolumeSource(meter); 
                 directSoundOut = InitializeSoundOut(volumeSource);
                 NetRadioPlugin.UpdateGlobalRadioVolume();
                 directSoundOut.Play();
@@ -343,15 +247,11 @@ namespace NetRadio
                 failedToLoad = true;
                 Log.LogError($"Error playing radio: {exception.Message}"); 
                 Log.LogError(exception.StackTrace); 
-                //currentStation = -1;
             }
 
             if (GlobalRadio == this && !failedToLoad && !trackingMetadata) {
-                // metadata on separate connection, so let them run together
-                //StartCoroutine("TrackAudioDevice");
                 if (trackingMetadataTask != null) { trackingMetadataTask.Wait(); } 
-                trackingMetadataTask = TrackMetadata(); //StartCoroutine(metadataCoroutine);
-                
+                trackingMetadataTask = TrackMetadata(); 
             }
 
             stopped = false;
@@ -411,12 +311,11 @@ namespace NetRadio
 
         private async Task TrackMetadata() {
             if (!enableMetadataTracking) { return; }
-            //if (m_httpClient == null) { m_httpClient = CreateHTTPClient(); }
             trackingMetadata = true;
 
             IcecastStatus oldMetadata = null; 
             int oldStation = currentStation;
-            bool looped = false;
+            //bool looped = false;
             
             while (trackingMetadata && playing) {
                 if (!string.IsNullOrWhiteSpace(currentStationURL)) { 
@@ -430,9 +329,9 @@ namespace NetRadio
                             if (metadataTimeOffset > 0f && looped) { 
                                 await Task.Delay((int)(metadataTimeOffset*1000)); 
                             }*/
+                            //looped = true;
                             HandleMetadata(currentMetadata); 
                             oldMetadata = currentMetadata;
-                            looped = true;
                         }
                     } catch (System.Exception exception) {
                         Log.LogError($"Error tracking metadata: {exception.Message}"); 
@@ -440,11 +339,9 @@ namespace NetRadio
                     }
                     
                 }  
-                //Log.LogInfo(currentMetadata);
-                await Task.Delay(2000); //await Task.Yield(); //yield return null;
+                await Task.Delay(2000); //await Task.Yield(); 
             }
-
-            trackingMetadata = false; // cts.Cancel();
+            trackingMetadata = false;
         }
 
         private void HandleMetadata(IcecastStatus originalMetadata) {
@@ -454,7 +351,7 @@ namespace NetRadio
             NetRadioPlugin.UpdateCurrentSong();
         }
 
-        private System.Net.Http.HttpClient CreateHTTPClient() { //private async Task<System.Net.Http.HttpClient> CreateHTTPClient() {
+        private System.Net.Http.HttpClient CreateHTTPClient() { 
             var httpClient = new System.Net.Http.HttpClient();
             httpClient.DefaultRequestHeaders.Add("Icy-MetaData", "1");
             httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("C# App (BRC NetRadio)");
@@ -501,12 +398,6 @@ namespace NetRadio
             return null;
         }
 
-        public void AdjustMusicVolume(float volume, float multiplier = 0.5f) { // make musicPlayer and GlobalRadio quieter while approaching spatialRadio 
-            musicPlayer.audioSource.volume = 1 - (volume*multiplier);
-            GlobalRadio.volume = 1 - (volume*multiplier);
-        }
-
-        // EXPERIMENTAL
         public static NetRadioManager CreateRadio(Transform parent) {
             GameObject radioHolder = new GameObject();
             NetRadioManager NetRadioManager = radioHolder.AddComponent<NetRadioManager>();

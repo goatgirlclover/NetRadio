@@ -21,7 +21,6 @@ namespace NetRadio
         public static ConfigEntry<string> keybindsReloadUnsplit;
 
         public static ConfigEntry<bool> noThreads;
-        public static ConfigEntry<bool> moreCodecs;
 
         public static List<KeyCode> keybindsReload;
 
@@ -35,6 +34,9 @@ namespace NetRadio
         // appended to end of station list
         // potentially useful for radio expansion mods
         public static string extraStations = ""; 
+
+        // TEMPORARILY REMOVED // 
+        //public static ConfigEntry<bool> moreCodecs; 
 
         public static List<string> configURLs;
 
@@ -57,8 +59,7 @@ namespace NetRadio
             keybindsReloadUnsplit.SettingChanged += UpdateSettingsEvent;
 
             noThreads = Config.Bind("Settings", "Disable Multithreading", false, "EXPERIMENTAL! Prevent multithreading for radio streaming, causing the game to freeze when starting a radio. Not recommended.");
-            moreCodecs = Config.Bind("Settings", "Enable Media Foundation Codecs", false, "EXPERIMENTAL! Windows only. Allow the use of Windows Media Foundation codecs instead of FFmpeg. Note that if the Media Foundation player fails, the mod will fallback to FFmpeg.");
-            // fast panning option - just pan the stereo output directly, using only one waveout
+            //moreCodecs = Config.Bind("Settings", "Enable Media Foundation Codecs", false, "EXPERIMENTAL! Windows only. Allow the use of Windows Media Foundation codecs instead of FFmpeg. Note that if the Media Foundation player fails, the mod will fallback to FFmpeg.");
         }
 
         public static void UpdateSettingsEvent(object sender, EventArgs args) {
@@ -75,7 +76,6 @@ namespace NetRadio
         }
 
         public static void LoadURLs() {
-            // partnered stations + custom stations
             string trueStreamURLs = partneredStations + streamURLsUnsplit.Value + extraStations;
             List<string> stations = SplitStringByCommas(trueStreamURLs).Distinct().ToList();
             List<string> newStreams = new List<string>{}; 

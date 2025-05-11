@@ -20,12 +20,6 @@ using static NetRadio.NetRadio;
 namespace NetRadio {
     [HarmonyPatch(typeof(AppMusicPlayer))]
     internal class MusicAppPatches {
-        //[HarmonyPostfix]
-        //[HarmonyPatch(nameof(AppMusicPlayer.PlaySong))]
-        //public static void AppPlaySong_StopRadio() {
-            //GlobalRadio.Stop();
-        //}
-
         [HarmonyPrefix]
         [HarmonyPatch(nameof(AppMusicPlayer.OnReleaseRight))]
         public static bool OnReleaseRight_ClearCurrent(AppMusicPlayer __instance) {
@@ -53,7 +47,7 @@ namespace NetRadio {
             if (GlobalRadio.playing) {
                 __instance.m_StatusImage.sprite = __instance.m_StatusIcons[0];
                 float intensity = 1f; // 0.5f;
-                float speed = 0.65f; // 0.5f;
+                float speed = 0.95f; // 0.5f;
                 Vector3 targetSize = Vector3.one * (1f + GlobalRadio.streamSampleVolume * intensity - (0.5f*intensity));
                 __instance.m_StatusImage.rectTransform.localScale = Vector3.Lerp(__instance.m_StatusImage.rectTransform.localScale, targetSize, 30f * speed * Time.deltaTime);
             }
@@ -139,28 +133,4 @@ namespace NetRadio {
             }
         }
     }
-
-
-    // spatial radio testing
-    [HarmonyPatch(typeof(ASceneSetupInstruction))]
-	internal class patch_StageManager_OnPostRender
-	{
-        [HarmonyPatch("SetSceneActive")]
-		private static void Postfix(string sceneToSetActive)
-		{
-            //NetRadio.gameStarted = false;
-            return; /*
-			Junk[] array = UnityEngine.Object.FindObjectsOfType<Junk>();
-			Junk[] array2 = array;
-			foreach (Junk val in array2)
-			{
-				if (((UnityEngine.Object)val).name == "TV")
-				{
-                    NetRadioManager lm = NetRadioManager.CreateRadio(val.transform, true, true, new List<string> {"http://as.fm1.be:8000/media"});
-				}
-			} */
-		}
-	}
-
-    
 }

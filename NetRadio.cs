@@ -147,25 +147,5 @@ namespace NetRadio
             }
             return parentName.ToString();
         }
-
-        /* public static void CheckInputLanguage() {
-            InputLanguage origIpl = InputLanguage.CurrentInputLanguage;
-            try { CultureInfo ci = origIpl.Culture; }
-            catch (ArgumentException) {
-                InputLanguage validIpl = null;
-                InputLanguage preferredIpl = null;
-                foreach (InputLanguage ipl in InputLanguage.InstalledInputLanguages) {
-                    try {
-                        CultureInfo ci = ipl.Culture;
-                        if (validIpl == null) { validIpl = ipl; }
-                        if (origIpl.LayoutName != ipl.LayoutName) { continue; }
-                        preferredIpl = ipl;
-                        break;
-                    } catch (ArgumentException) { continue; }
-                }
-                if (validIpl != null) { InputLanguage.CurrentInputLanguage = preferredIpl ?? validIpl; } 
-                else { Log.LogWarning("No valid input languages?"); }
-            }
-        } */
     }
 }

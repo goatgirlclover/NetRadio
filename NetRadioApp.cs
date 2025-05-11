@@ -65,13 +65,12 @@ namespace NetRadio
             overlayInstance = newOverlay; 
         }
 
-        public override void OnPressUp() { // if selected the 2nd one and the top one is a blank header, don't bother
+        public override void OnPressUp() { 
             int currentIndex = ScrollView.SelectedIndex;
             int nextIndex = currentIndex - 1;
-            int edgeValue = 0;
 
             if (!(nextIndex < 0 || nextIndex >= ScrollView.Buttons.Count)) { 
-                if (IsHeaderButton((SimplePhoneButton)ScrollView.Buttons[nextIndex]) && nextIndex == edgeValue) {
+                if (IsHeaderButton((SimplePhoneButton)ScrollView.Buttons[nextIndex])) {
                     return;
                 }
             }
@@ -79,13 +78,12 @@ namespace NetRadio
             base.OnPressUp();
         } 
 
-        public override void OnPressDown() { // if selected the 2nd-to-last one and the bottom one is blank, don't bother
+        public override void OnPressDown() { 
             int currentIndex = ScrollView.SelectedIndex;
             int nextIndex = currentIndex + 1;
-            int edgeValue = ScrollView.Buttons.Count - 1;
             
             if (!(nextIndex < 0 || nextIndex >= ScrollView.Buttons.Count)) { 
-                if (IsHeaderButton((SimplePhoneButton)ScrollView.Buttons[nextIndex]) && nextIndex == edgeValue) {
+                if (IsHeaderButton((SimplePhoneButton)ScrollView.Buttons[nextIndex])) {
                     return;
                 }
             }
@@ -183,6 +181,7 @@ namespace NetRadio
         }
 
         public async Task GetStationMetadata() {
+            await Task.Delay(200); 
             IcecastStatus currentInfo = !(GlobalRadio.playing && GlobalRadio.currentStation == currentStationIndex)
                                         ? await GlobalRadio.GetMetadata(GlobalRadio.streamURLs[currentStationIndex])
                                         : GlobalRadio.currentMetadata;
@@ -372,15 +371,14 @@ namespace NetRadio
             IconSprite = LoadSprite(Path.Combine(dataDirectory, "icon.png")); 
             PhoneAPI.RegisterApp<AppNetRadio>(appName, IconSprite); 
 
-            ffmpegReader = new FfmpegDecoder(Path.Combine(dataDirectory, "Tuning.mp3"));
+            //if (ffmpegReader != null) { ffmpegReader.Dispose(); }
+            ffmpegReader = CreateSFXReader("tuning");
             volumeSource = new VolumeSource(WaveToSampleBase.CreateConverter(ffmpegReader));
             waveOut = new WaveOut(NetRadio.waveOutLatency);
             converter = new SampleToIeeeFloat32(volumeSource);
 
             SelectedButtonSprite = LoadSprite(Path.Combine(dataDirectory, "SimpleButton-Selected.png"));
             UnselectedButtonSprite = LoadSprite(Path.Combine(dataDirectory, "SimpleButton.png"));
-            //DiscSprite = LoadSprite(Path.Combine(dataDirectory, "StationDisc.png"));
-            //DiscSpinSprite = LoadSprite(Path.Combine(dataDirectory, "StationDisc-Spinning.png"));
             BlankButtonSprite = LoadSprite(Path.Combine(dataDirectory, "BlankButton.png"));
 
             string antennaPath = dataDirectory + "Antenna-";
@@ -417,16 +415,15 @@ namespace NetRadio
             }
         }
 
+        public static FfmpegDecoder CreateSFXReader(string sfxName = "tuning") { 
+            return new FfmpegDecoder(Path.Combine(dataDirectory, "sfx/", (sfxName + ".mp3")));
+        }
+
         public static Sprite GetStationLogo(string requestedStation, bool selected) {
             int index = selected ? 1 : 0;
             string station = StationIcons.ContainsKey(requestedStation) ? requestedStation : "Custom";
             return StationIcons[station][index];
         }
-
-        /* public static List<Sprite> GetStationLogos(string requestedStation) {
-            string station = StationIcons.ContainsKey(requestedStation) ? requestedStation : "Custom";
-            return StationIcons[station];
-        } */
 
         public override void OnReleaseLeft() { MyPhone.ReturnToHome(); } // ignore any previous app history
 
@@ -462,14 +459,7 @@ namespace NetRadio
         private void AddURLButtons() {
             lastSelectedButton = null;
             realTime = 0f;
-            //normalButtonIndexOffset = 0;
             filteredButtons.Clear();
-            //runPrefix = false;
-            // add non-station buttons
-            /* var normalButton = CreateSimpleButton("TEST");
-            normalButton.OnConfirm += () => {};
-            ScrollView.AddButton(normalButton); */
-            //runPrefix = true;
 
             var blankButton = CreateHeaderButton(AppNetRadio.currentNowPlayingText, AppNetRadio.currentNowPlayingHeight); 
             ScrollView.AddButton(blankButton);
@@ -588,8 +578,6 @@ namespace NetRadio
             }
 
             yield return new WaitForSeconds(1f);
-            //Destroy(overlayInstance.gameObject);
-            //overlayInstance = null;
             GlobalRadio.failedToLoad = false;
         }
 
@@ -641,13 +629,11 @@ namespace NetRadio
                             AppNetRadio.UpdateNowPlayingButton(button, ScrollView);
                         }
                         button.PlayDeselectAnimation(true);
-                        //button.AnimationParent.transform.localPosition = new Vector3 (0f, button.gameObject.transform.localPosition.y, 0f); 
                         continue;
                     }
 
                     if (ScrollView.Buttons.IndexOf(button) == ScrollView.SelectedIndex) {
                         time += Time.deltaTime;
-                        //realTime += Time.deltaTime;
                     } if (button.ButtonImage.sprite.texture.wrapMode != TextureWrapMode.Clamp) { 
                         button.ButtonImage.sprite.texture.wrapMode = TextureWrapMode.Clamp; 
                     } 
@@ -667,7 +653,7 @@ namespace NetRadio
                 if (buttonIndex >= urlWrapOffsets.Count) { 
                     urlWrapOffsets.Add(0); 
                 }
-                //foreach (TextMeshProUGUI child in button.Label.GetComponentsInChildren<TextMeshProUGUI>()) { if (child != button.Label && child.name.Contains("URL")) { urlLabel = child; } }
+
                 if (selected && urlIsTooLong[buttonIndex]) {
                     time += Time.deltaTime;
                     if (time > 0.3f) {
@@ -693,28 +679,12 @@ namespace NetRadio
 
                 Image disc = button.Label.gameObject.transform.GetChild(1).gameObject.GetComponent<Image>();
                 if (disc == null || !disc.gameObject.name.Contains("Icon")) { continue; }
-                
-                //Image disc = null;
-                /* foreach (Image child in button.Label.GetComponentsInChildren<Image>()) { 
-                    if (SelectedAntennaSprites.Contains(child.sprite) || UnselectedAntennaSprites.Contains(child.sprite)) { disc = child; } 
-                    //else if (GetStationLogos(button.Label.text).Contains(child.sprite)) { stationIcon = child; }
-                    //if (child.sprite == DiscSprite || child.sprite == DiscSpinSprite) { disc = child; } 
-                } if (disc == null) { continue; } */
 
                 bool playingMyTrack = buttonIndex == GlobalRadio.currentStation && GlobalRadio.playing;
                 List<Sprite> spriteArray = selected ? SelectedAntennaSprites : UnselectedAntennaSprites; 
                 float antennaFrameFloat = (realTime * 5f) % 4f;
                 int antennaFrame = !playingMyTrack ? 0 : Mathf.Clamp((int)antennaFrameFloat + 1, 0, spriteArray.Count - 1);
                 disc.sprite = spriteArray[antennaFrame];
-
-                //stationIcon.sprite = GetStationLogo(button.Label.text, selected);
-
-                /*if (playingMyTrack) {
-                    disc.rectTransform.localEulerAngles = new Vector3 { z = realTime * 2000f };
-                } else {
-                    disc.rectTransform.localEulerAngles = new Vector3 { z = 0f }; //{ z = Mathf.LerpAngle(disc.rectTransform.localEulerAngles.z, 0.0f, 0.5f) };
-                }
-                disc.sprite = playingMyTrack ? DiscSpinSprite : DiscSprite; */
             } 
 
             base.OnAppLateUpdate();
@@ -741,7 +711,6 @@ namespace NetRadio
         }   
 
         public static SimplePhoneButton CreateSimpleButton(string label) {
-            //normalButtonIndexOffset++; 
             return PhoneUIUtility.CreateSimpleButton(label); 
         }
 
@@ -751,7 +720,6 @@ namespace NetRadio
             var titleLabel = button.Label;
             var headerSig = new GameObject("Header");
             headerSig.transform.SetParent(titleLabel.gameObject.transform, false);
-            //normalButtonIndexOffset++;
             button.ButtonImage.gameObject.RectTransform().sizeDelta = new Vector2(530f * 2f, height);
             titleLabel.transform.localPosition += new Vector3 (-70f, 0f, 0f);
             runPrefix = true;
@@ -785,8 +753,6 @@ namespace NetRadio
             
             if (height != previousHeight && !skipCheck) { 
                 scrollView.UpdateButtons(); 
-                //Log.LogInfo("Updating button height");
-                //Log.LogInfo(height);
             }
         }
 
@@ -795,7 +761,7 @@ namespace NetRadio
             var button = PhoneUIUtility.CreateSimpleButton(label); 
             var buttonAnimationParent = button.gameObject.transform.Find("Animation Parent");
 
-            url = StandardizeURL(url); //url.Replace("https://", "").Replace("http://", "").Replace("www.", "").Trim();
+            url = StandardizeURL(url);
             url += "        ";
 
             var labelGO = new GameObject("URLLabel");
@@ -822,7 +788,8 @@ namespace NetRadio
             labelGO.transform.localPosition -= titleOffset;
             labelRect.sizeDelta -= new Vector2(0.3f*(urlOffsetX - titleOffsetX), 0);
             titleLabel.RectTransform().sizeDelta -= new Vector2(titleOffsetX - 50f, 0);
-            button.ConfirmArrow.RectTransform().localPosition += new Vector3(arrowOffsetX, -9999f, 0f); // crappy way of hiding arrow //new Vector3(arrowOffsetX, arrowOffsetY, 0f);
+            // crappy way of hiding arrow //new Vector3(arrowOffsetX, arrowOffsetY, 0f);
+            button.ConfirmArrow.RectTransform().localPosition += new Vector3(arrowOffsetX, -9999f, 0f);
 
             // disc = antenna
             var disc = new GameObject("Station Icon"); 

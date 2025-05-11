@@ -17,8 +17,6 @@ namespace NetRadio
         
         public static readonly int saveVersion = 0; // current save file version (Write())
         private static int readSaveVersion = 0; // save version from file (Read())
-
-        //public static List<decimal> stationVolumes = new List<decimal>{}; 
         public static Dictionary<string, decimal> stationVolumesByURL = new Dictionary<string, decimal>();
 
         // save location: %localappdata%\Bomb Rush Cyberfunk Modding\NetRadio\saves
