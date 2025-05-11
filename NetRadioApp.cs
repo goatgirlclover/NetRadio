@@ -313,10 +313,8 @@ namespace NetRadio
         public static bool playing = false;
         public static bool runPrefix = true;
         
-        private static FfmpegDecoder ffmpegReader;
+        private static VolumeSource tuningSource;
         public static WaveOut waveOut;
-        private static VolumeSource volumeSource; 
-        private static SampleToIeeeFloat32 converter;
 
         public static Sprite SelectedButtonSprite;
         public static Sprite UnselectedButtonSprite;
@@ -371,11 +369,7 @@ namespace NetRadio
             IconSprite = LoadSprite(Path.Combine(dataDirectory, "icon.png")); 
             PhoneAPI.RegisterApp<AppNetRadio>(appName, IconSprite); 
 
-            //if (ffmpegReader != null) { ffmpegReader.Dispose(); }
-            ffmpegReader = CreateSFXReader("tuning");
-            volumeSource = new VolumeSource(WaveToSampleBase.CreateConverter(ffmpegReader));
             waveOut = new WaveOut(NetRadio.waveOutLatency);
-            converter = new SampleToIeeeFloat32(volumeSource);
 
             SelectedButtonSprite = LoadSprite(Path.Combine(dataDirectory, "SimpleButton-Selected.png"));
             UnselectedButtonSprite = LoadSprite(Path.Combine(dataDirectory, "SimpleButton.png"));
@@ -413,10 +407,6 @@ namespace NetRadio
                     StationIcons.Add(stationName, sprites);
                 }
             }
-        }
-
-        public static FfmpegDecoder CreateSFXReader(string sfxName = "tuning") { 
-            return new FfmpegDecoder(Path.Combine(dataDirectory, "sfx/", (sfxName + ".mp3")));
         }
 
         public static Sprite GetStationLogo(string requestedStation, bool selected) {
@@ -511,15 +501,26 @@ namespace NetRadio
             StartCoroutine(Instance.ClearButtons()); 
         }
 
-        public static void PlayNoise() {
-            if (volumeSource != null) { //if (waveOut.PlaybackState == PlaybackState.Playing) {
-                volumeSource.Volume = radioMusicVolume;
-            } 
-            
-            ffmpegReader.Position = 0;
-            waveOut.Initialize(converter);
-            waveOut.Play();
+        public static void PlayNoise() { 
+            PlaySFX("tuning", true); 
             playing = true;
+        }
+
+        public static void PlaySFX(string sfxName, bool startedByPlayNoise = false) {
+            waveOut.Stop();
+            if (sfxName == "tuning" && !startedByPlayNoise) { 
+                PlayNoise(); 
+                return;
+            }
+            
+            FfmpegDecoder sfxDecoder = new FfmpegDecoder(Path.Combine(dataDirectory, "sfx/", (sfxName + ".mp3")));
+            sfxDecoder.Position = 0;
+            VolumeSource sfxReader = new VolumeSource(WaveToSampleBase.CreateConverter(sfxDecoder)); 
+            if (sfxName == "tuning") { tuningSource = sfxReader; }
+            sfxReader.Volume = radioMusicVolume;
+            
+            waveOut.Initialize(new SampleToIeeeFloat32(sfxReader));
+            waveOut.Play();
         }
 
         private IEnumerator ClearButtons() {
@@ -559,6 +560,7 @@ namespace NetRadio
         public IEnumerator HandleFailedConnection() {
             playing = false;
             waveOut.Stop();
+            PlaySFX("fail");
 
             if (overlayInstance != null) {
                 Destroy(overlayInstance.gameObject);
@@ -568,6 +570,7 @@ namespace NetRadio
             CreateAndSaveIconlessTitleBar("Connection failed!");
             if (connectIcon != null) { connectIcon.sprite = ConnectingSprites[3]; }
 
+            // make these optional via config
             if (musicPlayerWasInterrupted) {
                 musicPlayerWasInterrupted = false;
                 musicPlayer.PlayFrom(musicPlayer.CurrentTrackIndex, musicPlayerInterruptSamples);
@@ -615,10 +618,7 @@ namespace NetRadio
                 }
             }
             
-            if (volumeSource != null) { //if (waveOut.PlaybackState == PlaybackState.Playing) {
-                volumeSource.Volume = radioMusicVolume;
-            } 
-
+            if (tuningSource != null) { tuningSource.Volume = radioMusicVolume; }
             realTime += Time.deltaTime;
 
             foreach (SimplePhoneButton button in ScrollView.Buttons) {

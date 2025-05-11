@@ -88,12 +88,14 @@ namespace NetRadio
                 if (playing) {
                     if ((ffmpegReader.Position + 150 >= ffmpegReader.Length && ffmpegReader.Length != 0 && ffmpegReader.CanSeek)) {
                         StopRadio();
+                        AppNetRadio.PlaySFX("lost");
                     }
                     
                     if (ffmpegReader.Position == oldPosition && ffmpegReader.Position > 300000) { 
                         amountOfTimesFoundAtSamePosition++;
-                        if (amountOfTimesFoundAtSamePosition > 10) { 
+                        if (amountOfTimesFoundAtSamePosition > (int)Mathf.Round(NetRadio.bufferTimeInSeconds*30.0f)) { 
                             StopRadio(); 
+                            AppNetRadio.PlaySFX("lost");
                             amountOfTimesFoundAtSamePosition = 0;
                             skipDisposal = true;
                         }
@@ -220,8 +222,9 @@ namespace NetRadio
                 ffmpegReader = new FfmpegDecoder(currentStationURL);
                 connectionTime = Time.realtimeSinceStartup - realtimeAtStart;
                 
-                int bufferInt = ffmpegReader.WaveFormat.SampleRate * ffmpegReader.WaveFormat.BlockAlign;
-                bufferInt = (int)Mathf.Round((float)bufferInt * (float)NetRadio.bufferTimeInSeconds);
+                //int bufferInt = ffmpegReader.WaveFormat.SampleRate * ffmpegReader.WaveFormat.BlockAlign;
+                //bufferInt = (int)Mathf.Round((float)bufferInt * (float)NetRadio.bufferTimeInSeconds);
+                int bufferInt = (int)Mathf.Round((float)ffmpegReader.WaveFormat.BytesPerSecond * (float)NetRadio.bufferTimeInSeconds);
                 var buffer = new BufferSource(ffmpegReader, bufferInt);
 
                 meter = new PeakMeter(WaveToSampleBase.CreateConverter(buffer));
@@ -266,7 +269,7 @@ namespace NetRadio
             
             bool deviceChanged = !stopped; 
             if (deviceChanged) {
-                Log.LogWarning("Output device changed");
+                Log.LogWarning("Output device changed?");
                 //var ogSoundOut = directSoundOut;
                 await Task.Delay(500);
                 Log.LogWarning("Reconnecting?");

@@ -87,7 +87,10 @@ namespace NetRadio
                 if (AppNetRadio.waveOut != null && AppNetRadio.playing) {
                     if (NetRadio.PlayerUsingApp(typeof(AppNetRadio))) {
                         if (NetRadio.GlobalRadio.failedToLoad) { StartCoroutine(AppNetRadio.Instance.HandleFailedConnection()); }
-                        else if (NetRadio.GlobalRadio.playing) { StartCoroutine(AppNetRadio.Instance.StopIn(1f)); }
+                        else if (NetRadio.GlobalRadio.playing) { 
+                            AppNetRadio.PlaySFX("success");
+                            StartCoroutine(AppNetRadio.Instance.StopIn(1f)); 
+                        }
                     } else if (NetRadio.GlobalRadio.playing || NetRadio.GlobalRadio.failedToLoad) {
                         NetRadio.GlobalRadio.failedToLoad = false;
                         AppNetRadio.waveOut.Stop();

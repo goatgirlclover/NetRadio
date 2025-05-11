@@ -40,11 +40,11 @@ namespace NetRadio
         public static float sfxVolume { get { return audioSubSystem.GetChannelVolumeScale(AudioChannelID.Master, audioManager.masterAudioMaxVolume01Clamped) * audioSubSystem.GetChannelVolumeScale(AudioChannelID.Sfx, audioManager.masterAudioMaxVolume01Clamped); } }
 
         public static NetRadioManager GlobalRadio;
-        //public static AppNetRadio radioApp { get { return player.phone.GetAppInstance<AppNetRadio>(); } set { radioApp = value as AppNetRadio; } }
+        //public static AppNetRadio radioApp { get { return AppNetRadio.Instance } }
 
         public const string PluginName = "NetRadio";
         public const string PluginGUID = "goatgirl.NetRadio";
-        public const string PluginVersion = "1.0.5";
+        public const string PluginVersion = "2.0.0";
 
         public static bool gameStarted = false;
 
