@@ -102,7 +102,19 @@ namespace NetRadio
         public static bool justFailedCopy = false;
         
         public static int volumeInPercent = 100;
+        public static readonly string[] metadataModeDisplay = new string[] { "Disabled", "Enabled", "Alternate" };
+        public static int currentMetadataMode = 1; 
+        public static int metadataOffsetInMS = 0; 
+
         public static bool changingVolume = false;
+        public static bool changingMetadataMode = false;
+        public static bool changingMetadataOffset = false;
+        public static bool changingAny { 
+            get { return changingVolume || changingMetadataMode || changingMetadataOffset; } 
+            set { changingVolume = false; changingMetadataMode = false; changingMetadataOffset = false; }
+        }
+
+       
 
         public override bool Available => false;
 
@@ -116,13 +128,19 @@ namespace NetRadio
             lastSelectedButton = null;
             CreateAndSaveTitleBar(GlobalRadio.GetStationTitle(currentStationIndex), AppNetRadio.UnselectedAntennaSprites[2]);//CreateIconlessTitleBar(appName);
             justCopied = false;
-            changingVolume = false;
+            changingAny = false;
             time = 0.0f;
 
             string urlForCurrent = NetRadio.StandardizeURL(NetRadioSettings.configURLs[currentStationIndex]);
-            float volumeMultiplier = NetRadioSaveData.stationVolumesByURL.ContainsKey(urlForCurrent) ? (float)NetRadioSaveData.stationVolumesByURL[urlForCurrent] : 1f;
+            float volumeMultiplier = NetRadioSaveData.stationSettingsByURL.ContainsKey(urlForCurrent) 
+                        ? (float)NetRadioSaveData.stationSettingsByURL[urlForCurrent].volume : 1f;
             float volumeHund = volumeMultiplier * 100f;
             volumeInPercent = 5 * (int)Math.Round(volumeHund / 5.0);
+
+            currentMetadataMode = NetRadioSaveData.stationSettingsByURL.ContainsKey(urlForCurrent) 
+                        ? (int)NetRadioSaveData.stationSettingsByURL[urlForCurrent].metadataMode : 1;
+            metadataOffsetInMS = NetRadioSaveData.stationSettingsByURL.ContainsKey(urlForCurrent) 
+                        ? (int)(NetRadioSaveData.stationSettingsByURL[urlForCurrent].metadataTimeOffsetSeconds*((decimal)1000.0)) : 0;
 
             var blankButton = AppNetRadio.CreateHeaderButton(AppNetRadio.currentNowPlayingText, AppNetRadio.currentNowPlayingHeight); 
             ScrollView.AddButton(blankButton);
@@ -150,6 +168,19 @@ namespace NetRadio
                 changingVolume = !changingVolume;
             };
             ScrollView.AddButton(nextButton);
+
+            nextButton = PhoneUIUtility.CreateSimpleButton("Metadata: ");
+            nextButton.OnConfirm += () => {
+                changingMetadataMode = !changingMetadataMode;
+            };
+            ScrollView.AddButton(nextButton);
+
+            nextButton = PhoneUIUtility.CreateSimpleButton("Metadata offset: ");
+            nextButton.OnConfirm += () => {
+                changingMetadataOffset = !changingMetadataOffset;
+            };
+            ScrollView.AddButton(nextButton);
+
 
             nextButton = PhoneUIUtility.CreateSimpleButton("Copy URL to clipboard");
             nextButton.OnConfirm += () => {
@@ -181,7 +212,12 @@ namespace NetRadio
         }
 
         public async Task GetStationMetadata() {
-            await Task.Delay(200); 
+            string urlForCurrent = NetRadio.StandardizeURL(NetRadioSettings.configURLs[currentStationIndex]);
+            bool cancelTracking = NetRadioSaveData.stationSettingsByURL.ContainsKey(urlForCurrent) 
+                                    ? NetRadioSaveData.stationSettingsByURL[urlForCurrent].metadataMode == 0 : false;
+            if (cancelTracking) { return; }
+
+            await Task.Delay(600); 
             IcecastStatus currentInfo = !(GlobalRadio.playing && GlobalRadio.currentStation == currentStationIndex)
                                         ? await GlobalRadio.GetMetadata(GlobalRadio.streamURLs[currentStationIndex])
                                         : GlobalRadio.currentMetadata;
@@ -193,8 +229,8 @@ namespace NetRadio
             ScrollView.AddButton(nextButton);
             nextButton = AppNetRadio.CreateHeaderButton("Genre: " + stationInfo.genre, 75f);
             ScrollView.AddButton(nextButton);
-            nextButton = AppNetRadio.CreateHeaderButton("Streaming since " + stationInfo.stream_start);
-            ScrollView.AddButton(nextButton);
+            /*nextButton = AppNetRadio.CreateHeaderButton("Streaming since " + stationInfo.stream_start);
+            ScrollView.AddButton(nextButton);*/
         }
 
         public override void OnAppUpdate() {
@@ -229,6 +265,12 @@ namespace NetRadio
                 } else if (button.Label.text.Contains("Volume:")) {
                     button.Label.text = "Volume: " + volumeInPercent + "%"; 
                     SetLabelColor(button, changingVolume ? Color.green : Color.clear);
+                } else if (button.Label.text.Contains("Metadata:")) {
+                    button.Label.text = "Metadata: " + metadataModeDisplay[currentMetadataMode]; 
+                    SetLabelColor(button, changingMetadataMode ? Color.green : Color.clear);
+                } else if (button.Label.text.Contains("Metadata offset:")) {
+                    button.Label.text = "Metadata offset: +" + metadataOffsetInMS.ToString() + "ms"; 
+                    SetLabelColor(button, changingMetadataOffset ? Color.green : Color.clear);
                 } else if (button.Label.text.Contains("clipboard")) {
                     button.Label.text = justFailedCopy ? "Copy to clipboard failed!" : (justCopied ? "Copied to clipboard!" : "Copy URL to clipboard");
                     SetLabelColor(button, justFailedCopy ? Color.red : (justCopied ? Color.green : Color.clear));
@@ -238,9 +280,33 @@ namespace NetRadio
             if (changingVolume) {
                 string key = StandardizeURL(NetRadioSettings.configURLs[currentStationIndex]);
                 decimal value = (decimal)(((decimal)volumeInPercent)/((decimal)100.00));
-                if (NetRadioSaveData.stationVolumesByURL.ContainsKey(key)) {
-                    NetRadioSaveData.stationVolumesByURL[key] = value;
-                } else { NetRadioSaveData.stationVolumesByURL.Add(key, value); }
+                if (NetRadioSaveData.stationSettingsByURL.ContainsKey(key)) {
+                    NetRadioSaveData.stationSettingsByURL[key].volume = value;
+                } else { 
+                    StationSettings stationSettings = new StationSettings();
+                    stationSettings.volume = value;
+                    NetRadioSaveData.stationSettingsByURL.Add(key, stationSettings); 
+                }
+            } else if (changingMetadataMode) {
+                string key = StandardizeURL(NetRadioSettings.configURLs[currentStationIndex]);
+                int value = currentMetadataMode;
+                if (NetRadioSaveData.stationSettingsByURL.ContainsKey(key)) {
+                    NetRadioSaveData.stationSettingsByURL[key].metadataMode = value;
+                } else { 
+                    StationSettings stationSettings = new StationSettings();
+                    stationSettings.metadataMode = value;
+                    NetRadioSaveData.stationSettingsByURL.Add(key, stationSettings); 
+                }
+            } else if (changingMetadataOffset) {
+                string key = StandardizeURL(NetRadioSettings.configURLs[currentStationIndex]);
+                decimal value = (decimal)(((decimal)metadataOffsetInMS) * ((decimal)0.001));
+                if (NetRadioSaveData.stationSettingsByURL.ContainsKey(key)) {
+                    NetRadioSaveData.stationSettingsByURL[key].metadataTimeOffsetSeconds = value;
+                } else { 
+                    StationSettings stationSettings = new StationSettings();
+                    stationSettings.metadataTimeOffsetSeconds = value;
+                    NetRadioSaveData.stationSettingsByURL.Add(key, stationSettings); 
+                }
             }
         }
 
@@ -256,7 +322,7 @@ namespace NetRadio
             base.OnAppDisable();
             Destroy(overlayInstance.gameObject);
             justCopied = false;
-            changingVolume = false;
+            changingAny = false;
             time = 0.0f;
             
             NetRadioSaveData.Instance.Save();
@@ -277,28 +343,34 @@ namespace NetRadio
         public override void OnPressUp() { // if selected the 2nd one and the top one is a blank header, don't bother
             if (changingVolume) {
                 volumeInPercent = Mathf.Clamp(volumeInPercent + 5, 0, 200);
-                return;
+            } else if (changingMetadataMode) {
+                currentMetadataMode = currentMetadataMode == 1 ? 0 : 1; 
+            } else if (changingMetadataOffset) {
+                metadataOffsetInMS = Mathf.Clamp(metadataOffsetInMS + 250, 0, 99000);
             }
-            
-            base.OnPressUp();
+
+            if (!changingAny) { base.OnPressUp(); }
         } 
 
         public override void OnPressDown() { // if selected the 2nd-to-last one and the bottom one is blank, don't bother
             if (changingVolume) {
                 volumeInPercent = Mathf.Clamp(volumeInPercent - 5, 0, 200);
-                return;
+            } else if (changingMetadataMode) {
+                currentMetadataMode = currentMetadataMode == 1 ? 0 : 1; 
+            } else if (changingMetadataOffset) {
+                metadataOffsetInMS = Mathf.Clamp(metadataOffsetInMS - 250, 0, 99000);
             }
             
-            base.OnPressDown();
+            if (!changingAny) { base.OnPressDown(); }
         } 
 
         public override void OnHoldUp() {
-            if (changingVolume) {return;}
+            if (changingAny) {return;}
             base.OnHoldUp();
         }
 
         public override void OnHoldDown() {
-            if (changingVolume) {return;}
+            if (changingAny) {return;}
             base.OnHoldDown();
         }
     }

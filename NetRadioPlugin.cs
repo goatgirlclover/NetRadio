@@ -106,7 +106,8 @@ namespace NetRadio
 
         public static void UpdateGlobalRadioVolume() {
             string urlForCurrent = NetRadio.StandardizeURL(NetRadio.GlobalRadio.currentStationURL);
-            float volumeMultiplier = NetRadioSaveData.stationVolumesByURL.ContainsKey(urlForCurrent) ? (float)NetRadioSaveData.stationVolumesByURL[urlForCurrent] : 1f;
+            float volumeMultiplier = NetRadioSaveData.stationSettingsByURL.ContainsKey(urlForCurrent) 
+                    ? (float)NetRadioSaveData.stationSettingsByURL[urlForCurrent].volume : 1f;
             NetRadio.GlobalRadio.radioVolume = NetRadio.radioMusicVolume * volumeMultiplier;
         }
 

@@ -15,9 +15,10 @@ namespace NetRadio
     {
         public static NetRadioSaveData Instance { get; private set; }
         
-        public static readonly int saveVersion = 0; // current save file version (Write())
+        public static readonly int saveVersion = 1; // current save file version (Write())
         private static int readSaveVersion = 0; // save version from file (Read())
-        public static Dictionary<string, decimal> stationVolumesByURL = new Dictionary<string, decimal>();
+        
+        public static Dictionary<string, StationSettings> stationSettingsByURL = new Dictionary<string, StationSettings>();
 
         // save location: %localappdata%\Bomb Rush Cyberfunk Modding\NetRadio\saves
         public NetRadioSaveData() : base("NetRadio", "Slot{0}.data", SaveLocations.LocalAppData)
@@ -29,38 +30,69 @@ namespace NetRadio
         // Starting a new save - start from zero.
         public override void Initialize()
         {
-            stationVolumesByURL = new Dictionary<string, decimal>();
+            stationSettingsByURL = new Dictionary<string, StationSettings>();
             NetRadioSettings.LoadURLs();
             foreach (string streamURL in NetRadioSettings.configURLs) {
-                if (!stationVolumesByURL.ContainsKey(StandardizeURL(streamURL))) {
-                    stationVolumesByURL.Add(StandardizeURL(streamURL), (decimal)1.00);
+                if (!stationSettingsByURL.ContainsKey(StandardizeURL(streamURL))) {
+                    stationSettingsByURL.Add(StandardizeURL(streamURL), new StationSettings());
                 }
             }
         }
 
         public override void Read(BinaryReader reader)
         {
-            stationVolumesByURL.Clear();
+            stationSettingsByURL.Clear();
             readSaveVersion = reader.ReadByte(); // save file version
-            var pairCount = reader.ReadInt32();
+            var stationCount = reader.ReadInt32();
 
-            for(var i = 0; i < pairCount; i++) {
-                var key = reader.ReadString();
-                var value = reader.ReadDecimal();
-                if (!stationVolumesByURL.ContainsKey(key)) {
-                    stationVolumesByURL.Add(key, value);
+            if (readSaveVersion == 0) {
+                for(var i = 0; i < stationCount; i++) {
+                    var key = reader.ReadString();
+                    var value = reader.ReadDecimal();
+                    StationSettings stationSettings = new StationSettings(); 
+                    stationSettings.volume = value;
+                    stationSettingsByURL.Add(key, stationSettings);
+                }
+            } else if (readSaveVersion == 1) {
+                for(var i = 0; i < stationCount; i++) {
+                    StationSettings value = new StationSettings(); 
+                    var key = reader.ReadString();
+                    value.volume = reader.ReadDecimal();
+                    value.metadataMode = reader.ReadInt32();
+                    value.metadataTimeOffsetSeconds = reader.ReadDecimal(); 
+                    stationSettingsByURL.Add(key, value);
                 }
             }
+            
         }
 
         public override void Write(BinaryWriter writer)
         {
-            writer.Write((byte)saveVersion);
-            writer.Write((Int32)stationVolumesByURL.Count);
-            foreach (string stationURL in stationVolumesByURL.Keys) {
-                writer.Write((string)stationURL);
-                writer.Write((decimal)stationVolumesByURL[stationURL]);
+            if (saveVersion == 0) {
+                writer.Write((byte)saveVersion);
+                writer.Write((Int32)stationSettingsByURL.Count);
+                foreach (string stationURL in stationSettingsByURL.Keys) {
+                    writer.Write((string)stationURL);
+                    writer.Write((decimal)stationSettingsByURL[stationURL].volume);
+                }
+            } else if (saveVersion == 1) {
+                writer.Write((byte)saveVersion);
+                writer.Write((Int32)stationSettingsByURL.Count);
+                foreach (string stationURL in stationSettingsByURL.Keys) {
+                    writer.Write((string)stationURL);
+                    writer.Write((decimal)stationSettingsByURL[stationURL].volume);
+                    writer.Write((Int32)stationSettingsByURL[stationURL].metadataMode);
+                    writer.Write((decimal)stationSettingsByURL[stationURL].metadataTimeOffsetSeconds);
+                }
             }
         }
+    }
+
+    public class StationSettings
+    {
+        public decimal volume = (decimal)1.00;
+        public int metadataMode = 1; // 0 = off, 1 = status-json.xsl, 2 = old metaint method (not implemented)
+        public decimal metadataTimeOffsetSeconds = (decimal)0.00;
+
     }
 }

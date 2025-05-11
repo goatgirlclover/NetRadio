@@ -313,36 +313,43 @@ namespace NetRadio
         }
 
         private async Task TrackMetadata() {
-            if (!enableMetadataTracking) { return; }
+            string urlForCurrent = NetRadio.StandardizeURL(NetRadioSettings.configURLs[currentStation]);
+            bool cancelTracking = NetRadioSaveData.stationSettingsByURL.ContainsKey(urlForCurrent) 
+                                    ? NetRadioSaveData.stationSettingsByURL[urlForCurrent].metadataMode == 0 : false;
+            if (!enableMetadataTracking || cancelTracking) { return; }
             trackingMetadata = true;
 
             IcecastStatus oldMetadata = null; 
             int oldStation = currentStation;
-            //bool looped = false;
+            bool looped = false;
             
             while (trackingMetadata && playing) {
+                int awaitTime = 2000; 
                 if (!string.IsNullOrWhiteSpace(currentStationURL)) { 
                     try {
                         float realtimeAtStart = Time.realtimeSinceStartup;
                         currentMetadata = await GetMetaDataFromIceCastStream(currentStationURL); 
                         float processingTime = Time.realtimeSinceStartup - realtimeAtStart;
                         if (currentMetadata != oldMetadata) {
-                            /*metadataTimeOffset = connectionTime - processingTime;
-                            metadataTimeOffset += NetRadio.bufferTimeInSeconds;                        
+                            decimal savedTime = NetRadioSaveData.stationSettingsByURL.ContainsKey(urlForCurrent) 
+                                    ? NetRadioSaveData.stationSettingsByURL[urlForCurrent].metadataTimeOffsetSeconds : (decimal)0.0;
+                            metadataTimeOffset = (float)savedTime;
                             if (metadataTimeOffset > 0f && looped) { 
-                                await Task.Delay((int)(metadataTimeOffset*1000)); 
-                            }*/
-                            //looped = true;
+                                awaitTime = (int)Mathf.Clamp(awaitTime - metadataTimeOffset*1000.0f, 20.0f, 2000.0f); 
+                                await Task.Delay((int)(metadataTimeOffset*1000.0f)); 
+                            }
+                            looped = true;
                             HandleMetadata(currentMetadata); 
                             oldMetadata = currentMetadata;
                         }
                     } catch (System.Exception exception) {
                         Log.LogError($"Error tracking metadata: {exception.Message}"); 
                         Log.LogError(exception.StackTrace); 
+                        trackingMetadata = false;
                     }
                     
                 }  
-                await Task.Delay(2000); //await Task.Yield(); 
+                await Task.Delay(awaitTime); //await Task.Yield(); 
             }
             trackingMetadata = false;
         }
