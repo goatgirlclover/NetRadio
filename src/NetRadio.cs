@@ -58,6 +58,33 @@ namespace NetRadio
 
         public static List<string> hasRedir = new List<string>{};
 
+        public static void Update() {
+            if (NetRadio.GlobalRadio is RadioManager) {
+                if (NetRadio.GlobalRadio.playing) {
+                    NetRadio.UpdateGlobalRadioVolume();
+                    if (NetRadio.musicPlayer.IsPlaying) { NetRadio.musicPlayer.ForcePaused(); }
+                }
+
+                if (AppNetRadio.waveOut != null && AppNetRadio.playing) {
+                    if (NetRadio.PlayerUsingApp(typeof(AppNetRadio))) {
+                        if (NetRadio.GlobalRadio.failedToLoad) { PluginInstance.StartCoroutine(AppNetRadio.Instance.HandleFailedConnection()); }
+                        else if (NetRadio.GlobalRadio.playing) { 
+                            AppNetRadio.PlaySFX("success");
+                            PluginInstance.StartCoroutine(AppNetRadio.Instance.StopIn(0f)); 
+                        }
+                    } else if (NetRadio.GlobalRadio.playing || NetRadio.GlobalRadio.failedToLoad) {
+                        NetRadio.GlobalRadio.failedToLoad = false;
+                        AppNetRadio.waveOut.Stop();
+                        AppNetRadio.playing = false;
+                    }
+                }
+            }
+
+            if (NetRadio.pressedAnyButtonIn(Settings.keybindsReload)) {
+                RadioManager.ReloadAllStations();
+            }
+        }
+
         public static bool PlayerUsingMusicApp() { return PlayerUsingApp(typeof(AppMusicPlayer)); }
 
         public static bool PlayerUsingApp(Type checkAppType) {

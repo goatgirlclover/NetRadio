@@ -73,30 +73,7 @@ namespace NetRadio
         }
 
         private void Update() {
-            if (NetRadio.GlobalRadio is RadioManager) {
-                if (NetRadio.GlobalRadio.playing) {
-                    NetRadio.UpdateGlobalRadioVolume();
-                    if (NetRadio.musicPlayer.IsPlaying) { NetRadio.musicPlayer.ForcePaused(); }
-                }
-
-                if (AppNetRadio.waveOut != null && AppNetRadio.playing) {
-                    if (NetRadio.PlayerUsingApp(typeof(AppNetRadio))) {
-                        if (NetRadio.GlobalRadio.failedToLoad) { StartCoroutine(AppNetRadio.Instance.HandleFailedConnection()); }
-                        else if (NetRadio.GlobalRadio.playing) { 
-                            AppNetRadio.PlaySFX("success");
-                            StartCoroutine(AppNetRadio.Instance.StopIn(0f)); 
-                        }
-                    } else if (NetRadio.GlobalRadio.playing || NetRadio.GlobalRadio.failedToLoad) {
-                        NetRadio.GlobalRadio.failedToLoad = false;
-                        AppNetRadio.waveOut.Stop();
-                        AppNetRadio.playing = false;
-                    }
-                }
-            }
-
-            if (NetRadio.pressedAnyButtonIn(Settings.keybindsReload)) {
-                RadioManager.ReloadAllStations();
-            }
+            NetRadio.Update(); 
         }
     }
 }
