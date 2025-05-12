@@ -337,7 +337,12 @@ namespace NetRadio
                         float realtimeAtStart = Time.realtimeSinceStartup;
                         currentMetadata = await GetMetaDataFromIceCastStream(currentStationURL); 
                         float processingTime = Time.realtimeSinceStartup - realtimeAtStart;
-                        if (currentMetadata != oldMetadata) {
+
+                        if (currentMetadata == null) {
+                            Log.LogError($"Null metadata. Cancelling tracking"); 
+                            trackingMetadata = false;
+                            return;
+                        } else if (currentMetadata != oldMetadata) {
                             decimal savedTime = SaveData.stationSettingsByURL.ContainsKey(urlForCurrent) 
                                     ? SaveData.stationSettingsByURL[urlForCurrent].metadataTimeOffsetSeconds : (decimal)0.0;
                             metadataTimeOffset = (float)savedTime;
@@ -381,12 +386,17 @@ namespace NetRadio
 
             bool connected = false;
             string responseString = "";
+            string prevStatusURL = "";
             Uri uri = new Uri(url); 
             do {   
                 string baseUrl = GetParentUriString(uri);
                 if (!baseUrl.EndsWith("/")) { baseUrl = baseUrl + "/"; }
                 string statusUrl = baseUrl + "status-json.xsl";
-                Log.LogInfo(statusUrl); 
+                Log.LogInfo("Checking for status-json.xsl: " + statusUrl);
+                if (statusUrl == prevStatusURL) {
+                    Log.LogWarning("Already checked!");
+                    return null; 
+                } 
 
                 try { 
                     var response = await m_httpClient.GetStringAsync(statusUrl);
@@ -394,14 +404,16 @@ namespace NetRadio
                     connected = true;
                 } catch (System.Exception exception) {
                     if (exception is HttpRequestException) {
-                        if (uri.ToString() == baseUrl) { return null; } //fallback
+                        if (uri.ToString() == baseUrl || statusUrl == prevStatusURL) { return null; } //fallback
                         else { uri = new Uri(baseUrl); }
                     }
                     else { 
                         Log.LogError($"Error getting metadata: {exception.Message}"); 
                         Log.LogError(exception.StackTrace);  
+                        return null;
                     }
                 }
+                prevStatusURL = statusUrl;
             } while (connected == false);
             
             try {

@@ -56,8 +56,8 @@ namespace NetRadio
             extraBufferSec = Config.Bind("Settings", "Buffer Time", 0.5f, "The length of the station's buffer in seconds. A longer buffer delays audio playback, but reduces stuttering.");
 
             playOnStartup = Config.Bind("Settings", "Play Radio on Startup", false, "Whether or not a radio station should automatically play upon loading a save.");
-            startupIndex = Config.Bind("Settings", "Startup Radio Station", -1, "The index of the station to play automatically if Play Radio on Startup is enabled (the first station in the NetRadio app is at index 0). If set to -1, the station will be chosen randomly.");
-            configureRequireConnection = Config.Bind("Settings", "Configuring Stations Requires Connection", true, "Whether it is possible to change a station's settings within the NetRadio app without connecting to the station.");
+            startupIndex = Config.Bind("Settings", "Startup Radio Station", 0, "The index of the station to play automatically if Play Radio on Startup is enabled (the first station in the NetRadio app is at index 0). If set to -1, the station will be chosen randomly.");
+            configureRequireConnection = Config.Bind("Settings", "Configuring Stations Requires Connection", false, "Whether it is possible to change a station's settings within the NetRadio app without connecting to the station.");
             restartMusic = Config.Bind("Settings", "Restart Interrupted Music", true, "Whether to either restart the in-game music or reconnect to a previous station when disconnecting from (or failing to connect to) a radio station.");
             
             sfxPack = Config.Bind("Settings", "App SFX Pack", "Default", new ConfigDescription("The sound effect pack to use within the NetRadio app. Affects sound effects for tuning into a station, connecting, disconnecting, failing to connect, and losing connection mid-stream.", sfxPacks));
