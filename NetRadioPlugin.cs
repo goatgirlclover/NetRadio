@@ -64,14 +64,10 @@ namespace NetRadio
                 FfmpegUtils.LogToDefaultLogger = false;
                 FfmpegUtils.FfmpegLogReceived += (s, e) =>
                 {
-                    Logger.LogError(e.Message);
+                    Logger.LogError("CSCORE FFMPEG: " + e.Message);
                 };
             }
         }
-
-        /* private void Start() {
-            new AudioDeviceMonitor();
-        } */
 
         private void OnDestroy() {
             Harmony.UnpatchSelf(); 
@@ -89,7 +85,7 @@ namespace NetRadio
                         if (NetRadio.GlobalRadio.failedToLoad) { StartCoroutine(AppNetRadio.Instance.HandleFailedConnection()); }
                         else if (NetRadio.GlobalRadio.playing) { 
                             AppNetRadio.PlaySFX("success");
-                            StartCoroutine(AppNetRadio.Instance.StopIn(1f)); 
+                            StartCoroutine(AppNetRadio.Instance.StopIn(0f)); 
                         }
                     } else if (NetRadio.GlobalRadio.playing || NetRadio.GlobalRadio.failedToLoad) {
                         NetRadio.GlobalRadio.failedToLoad = false;

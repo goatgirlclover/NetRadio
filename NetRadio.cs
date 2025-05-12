@@ -62,7 +62,11 @@ namespace NetRadio
 
         public static bool PlayerUsingApp(Type checkAppType) {
             if (player == null || player.phone == null)  { return false; }
-            return (player.phone.m_CurrentApp.GetType() == checkAppType && player.phone.IsOn && player.phoneLayerWeight >= 1f);
+            try {
+                Type currentAppType = player.phone.m_CurrentApp.GetType();
+                bool usingPhone = player.phone.IsOn && player.phoneLayerWeight >= 1f;
+                return currentAppType == checkAppType && usingPhone;
+            } catch (System.Exception) { return false; }
         }
 
         public static bool pressedAnyButtonIn(List<KeyCode> keybinds) {
@@ -82,6 +86,9 @@ namespace NetRadio
                 musicPlayer.ForcePaused();
                 yield return null;
             }
+            AppNetRadio.waveOut.Stop();
+            AppNetRadio.playing = false;
+            AppNetRadio.PlaySFX("success");
         }
 
         public static bool IsStationButton(SimplePhoneButton button) {

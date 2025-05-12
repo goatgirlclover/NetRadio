@@ -81,10 +81,10 @@ namespace NetRadio {
         }
     }
 
-    [HarmonyPatch(typeof(StageManager))]
-    internal class SMPatches {
+    [HarmonyPatch(typeof(BaseModule))]
+    internal class StartupPatch {
         [HarmonyPostfix]
-        [HarmonyPatch(typeof(StageManager), "StartMusicForStage", new Type[] { typeof(Stage), typeof(int) })]
+        [HarmonyPatch(typeof(BaseModule), "StartGameFromSaveSlot")]
         public static void StartupRadio() {
             if (NetRadio.gameStarted) { return; }
             NetRadio.gameStarted = true;

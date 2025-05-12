@@ -17,13 +17,15 @@ namespace NetRadio
         public static ConfigEntry<bool> configureRequireConnection;
 
         public static ConfigEntry<float> extraBufferSec;
-
         public static ConfigEntry<string> keybindsReloadUnsplit;
-
         public static ConfigEntry<bool> noThreads;
 
-        public static List<KeyCode> keybindsReload;
+        public static ConfigEntry<string> sfxPack;
+        public static AcceptableValueList<string> sfxPacks = new AcceptableValueList<string>(
+            ["Default", "Skype"]
+        );
 
+        public static List<KeyCode> keybindsReload;
         public static List<string> streamTitles = new List<string>{}; 
 
         // appended to start of station list
@@ -57,6 +59,8 @@ namespace NetRadio
             
             keybindsReloadUnsplit = Config.Bind("Settings", "Reload Radios Keybinds", "F11", "Press to reload all in-game radio streams.");
             keybindsReloadUnsplit.SettingChanged += UpdateSettingsEvent;
+
+            sfxPack = Config.Bind("Settings", "App SFX Pack", "Default", new ConfigDescription("The sound effect pack to use within the NetRadio app. Affects sound effects for tuning into a station, connecting, disconnecting, failing to connect, and losing connection mid-stream.", sfxPacks));
 
             noThreads = Config.Bind("Settings", "Disable Multithreading", false, "EXPERIMENTAL! Prevent multithreading for radio streaming, causing the game to freeze when starting a radio. Not recommended.");
             //moreCodecs = Config.Bind("Settings", "Enable Media Foundation Codecs", false, "EXPERIMENTAL! Windows only. Allow the use of Windows Media Foundation codecs instead of FFmpeg. Note that if the Media Foundation player fails, the mod will fallback to FFmpeg.");

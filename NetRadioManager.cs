@@ -324,7 +324,7 @@ namespace NetRadio
             bool looped = false;
             
             while (trackingMetadata && playing) {
-                int awaitTime = 2000; 
+                int awaitTime = 1000; 
                 if (!string.IsNullOrWhiteSpace(currentStationURL)) { 
                     try {
                         float realtimeAtStart = Time.realtimeSinceStartup;
@@ -336,7 +336,7 @@ namespace NetRadio
                             metadataTimeOffset = (float)savedTime;
                             if (metadataTimeOffset > 0f && looped) { 
                                 awaitTime = (int)Mathf.Clamp(awaitTime - metadataTimeOffset*1000.0f, 20.0f, 2000.0f); 
-                                await Task.Delay((int)(metadataTimeOffset*1000.0f)); 
+                                await DelayTrackingInSteps((int)(metadataTimeOffset*1000.0f)); 
                             }
                             looped = true;
                             HandleMetadata(currentMetadata); 
@@ -349,7 +349,7 @@ namespace NetRadio
                     }
                     
                 }  
-                await Task.Delay(awaitTime); //await Task.Yield(); 
+                await DelayTrackingInSteps(awaitTime); //await Task.Yield(); 
             }
             trackingMetadata = false;
         }
@@ -414,6 +414,17 @@ namespace NetRadio
             radioHolder.transform.parent = parent;
             //NetRadioManager.gameObject.transform.position = parent.transform.position;
             return NetRadioManager;
+        }
+
+        public async Task DelayTrackingInSteps(int delayTime, int step = 20) {
+            int awaitTime = delayTime;
+            int i = 0;
+            while (i*step < delayTime) { 
+                await Task.Delay(step);
+                i++;
+                if (!trackingMetadata) { return; }
+            }
+            return;
         }
     }
 }
