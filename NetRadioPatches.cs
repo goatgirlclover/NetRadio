@@ -46,8 +46,8 @@ namespace NetRadio {
         public static void UpdateStatusIcon(MusicPlayerStatusPanel __instance) {
             if (GlobalRadio.playing) {
                 __instance.m_StatusImage.sprite = __instance.m_StatusIcons[0];
-                float intensity = 1f; // 0.5f;
-                float speed = 0.95f; // 0.5f;
+                float intensity = 1f; 
+                float speed = 1f; 
                 Vector3 targetSize = Vector3.one * (1f + GlobalRadio.streamSampleVolume * intensity - (0.5f*intensity));
                 __instance.m_StatusImage.rectTransform.localScale = Vector3.Lerp(__instance.m_StatusImage.rectTransform.localScale, targetSize, 30f * speed * Time.deltaTime);
             }
@@ -90,7 +90,7 @@ namespace NetRadio {
             NetRadio.gameStarted = true;
 
             if (NetRadioSettings.playOnStartup.Value) {
-                NetRadioPlugin.Instance.StartCoroutine(NetRadio.MuteUntilRadioPlaying());
+                _= NetRadio.MuteUntilRadioPlaying();
                 if (NetRadioSettings.startupIndex.Value == -1) { NetRadio.GlobalRadio.PlayRandomStation(); }
                 else { NetRadio.GlobalRadio.PlayRadioStation(NetRadioSettings.startupIndex.Value); }
                 AppNetRadio.PlayNoise(); //AppNetRadio.waveOut.Play();

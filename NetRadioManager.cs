@@ -32,18 +32,19 @@ namespace NetRadio
     {
         public List<string> streamURLs = new List<string> {};
 
-        public FfmpegDecoder ffmpegReader;
-        public DirectSoundOut directSoundOut;
-        public VolumeSource volumeSource;
-        //public IWaveSource mediaFoundationReader;
-        public PeakMeter meter;
+        public FfmpegDecoder ffmpegReader { get; private set; } 
+        //public IWaveSource mediaFoundationReader { get; private set; } 
+        public DirectSoundOut directSoundOut { get; private set; } 
+        public VolumeSource volumeSource { get; private set; } 
+        public PeakMeter meter { get; private set; } 
 
-        public float streamSampleVolume { get; private set; } = 0f; //{ get { return meter.StreamVolume; }}
+        public float volume = 1.0f; 
         public float radioVolume { 
             get { return volumeSource != null ? volumeSource.Volume : 0f; } 
             set { if (volumeSource != null) { volumeSource.Volume = Mathf.Clamp01(value)*volume; } }
         }
-        public float volume = 1.0f; 
+        public float streamSampleVolume { get; private set; } = 0f; //{ get { return meter.StreamVolume; }}
+        
 
         public bool playing { 
             get { return directSoundOut != null ? directSoundOut.PlaybackState == PlaybackState.Playing : false; } 
@@ -55,8 +56,8 @@ namespace NetRadio
         public int previousStation { get; private set; } = -1;
         public string currentStationURL { get { return streamURLs[currentStation]; }}
         
-        public Thread playURLThread;
-        public Thread playURLChildThread;
+        private Thread playURLThread;
+        private Thread playURLChildThread;
         public bool useThread = true;
         public bool threadRunning { get { return playURLThread is Thread ? playURLThread.IsAlive : false; }}
         public bool failedToLoad = false;
@@ -76,11 +77,11 @@ namespace NetRadio
         public bool skipDisposal { get; private set; } = false;
         
         private void Start() { 
-            Log.LogInfo("Loaded radio manager");
             if (GlobalRadio == this) { 
                 NetRadioSettings.LoadURLs(); 
                 new NetRadioSaveData();
             }
+            Log.LogInfo("Loaded radio manager");
         }
 
         void FixedUpdate() {
@@ -106,9 +107,6 @@ namespace NetRadio
         }
 
         void OnDisable() {
-            //Instances.Remove(this);
-            /*if (playURLChildThread != null) { playURLChildThread.Abort(); }
-            if (playURLThread != null) { playURLThread.Abort(); }*/
             skipDisposal = false;
             CleanUp();
         }
@@ -147,20 +145,10 @@ namespace NetRadio
             if (m_httpClient != null) { m_httpClient.Dispose(); }
         }
 
-        public void Play(int streamIndex = -999) { 
-            PlayRadioStation(streamIndex == -999 ? currentStation : streamIndex); 
-        }
-        
+        public void Play(int streamIndex = -999) { PlayRadioStation(streamIndex == -999 ? currentStation : streamIndex); }
         public void Stop() { StopRadio(); }
-
-        public void Resume() { 
-            if (directSoundOut != null) { directSoundOut.Play(); }
-        }
-
-        public void Pause() {
-            stopped = true;
-            if (directSoundOut != null) { directSoundOut.Pause(); }
-        }
+        public void Resume() { if (directSoundOut != null) { directSoundOut.Play(); } }
+        public void Pause() { stopped = true; if (directSoundOut != null) { directSoundOut.Pause(); } }
 
         public static void ReloadAllStations() { // backup option for fixing syncing issues 
             NetRadioSettings.LoadURLs();
@@ -203,7 +191,7 @@ namespace NetRadio
         }
 
         private void StartPlayURL() {
-            var threadStart = new ThreadStart(PlayURL); //NetRadioSettings.moreCodecs.Value ? new ThreadStart(PlayURLMF) : new ThreadStart(PlayURL);
+            var threadStart = new ThreadStart(PlayURL); 
             playURLChildThread = new Thread(threadStart);
             playURLChildThread.Start();
             if (!playURLChildThread.Join(new TimeSpan(0, 0, 15)))

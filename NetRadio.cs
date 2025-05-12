@@ -56,9 +56,7 @@ namespace NetRadio
 
         public static List<string> hasRedir = new List<string>{};
 
-        public static bool PlayerUsingMusicApp() {
-            return PlayerUsingApp(typeof(AppMusicPlayer));
-        }
+        public static bool PlayerUsingMusicApp() { return PlayerUsingApp(typeof(AppMusicPlayer)); }
 
         public static bool PlayerUsingApp(Type checkAppType) {
             if (player == null || player.phone == null)  { return false; }
@@ -81,11 +79,12 @@ namespace NetRadio
             return returnSprite;
         }
 
-        public static IEnumerator MuteUntilRadioPlaying() {
+        public static async Task MuteUntilRadioPlaying() {
             while (!GlobalRadio.playing) {
                 musicPlayer.ForcePaused();
-                yield return null;
+                await Task.Yield();
             }
+
             AppNetRadio.waveOut.Stop();
             AppNetRadio.playing = false;
             AppNetRadio.PlaySFX("success");
