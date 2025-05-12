@@ -25,10 +25,11 @@ using CSCore.SoundOut;
 
 using static NetRadio.NetRadio;
 using NetRadio.Metadata; 
+using NetRadio.Apps;
 
 namespace NetRadio
 {
-    public class NetRadioManager : MonoBehaviour
+    public class RadioManager : MonoBehaviour
     {
         public List<string> streamURLs = new List<string> {};
 
@@ -78,8 +79,8 @@ namespace NetRadio
         
         private void Start() { 
             if (GlobalRadio == this) { 
-                NetRadioSettings.LoadURLs(); 
-                new NetRadioSaveData();
+                Settings.LoadURLs(); 
+                new SaveData();
             }
             Log.LogInfo("Loaded radio manager");
         }
@@ -151,10 +152,10 @@ namespace NetRadio
         public void Pause() { stopped = true; if (directSoundOut != null) { directSoundOut.Pause(); } }
 
         public static void ReloadAllStations() { // backup option for fixing syncing issues 
-            NetRadioSettings.LoadURLs();
-            NetRadioSettings.RefreshMusicApp();
-            NetRadioManager radioManager = NetRadio.GlobalRadio; 
-            //foreach (NetRadioManager radioManager in Resources.FindObjectsOfTypeAll<NetRadioManager>()) { 
+            Settings.LoadURLs();
+            Settings.RefreshMusicApp();
+            RadioManager radioManager = NetRadio.GlobalRadio; 
+            //foreach (RadioManager radioManager in Resources.FindObjectsOfTypeAll<RadioManager>()) { 
                 if (radioManager != null && radioManager.currentStation >= 0 && radioManager.directSoundOut.PlaybackState != PlaybackState.Stopped) { 
                     radioManager.PlayRadioStation(radioManager.currentStation); 
                 }
@@ -183,7 +184,7 @@ namespace NetRadio
                 previousStation = currentStation;
                 currentStation = streamIndex;
 
-                if (useThread && !NetRadioSettings.noThreads.Value) { // no freeze
+                if (useThread && !Settings.noThreads.Value) { // no freeze
                     playURLThread = new Thread(new ThreadStart(StartPlayURL));
                     playURLThread.Start();
                 } else { PlayURL(); } // yes freeze
@@ -237,7 +238,7 @@ namespace NetRadio
 
                 volumeSource = new VolumeSource(meter); 
                 directSoundOut = InitializeSoundOut(volumeSource);
-                NetRadioPlugin.UpdateGlobalRadioVolume();
+                NetRadio.UpdateGlobalRadioVolume();
                 directSoundOut.Play();
 
                 connectionTime = Time.realtimeSinceStartup - realtimeAtStart;
@@ -307,8 +308,8 @@ namespace NetRadio
             if (GlobalRadio != this) { return "LocalRadio"; } 
             int station = streamIndex == -999 ? currentStation : streamIndex;
             
-            if (station < 0 || station >= streamURLs.Count || station >= NetRadioSettings.streamTitles.Count) { return PluginName; }
-            else { return NetRadioSettings.streamTitles[station]; }
+            if (station < 0 || station >= streamURLs.Count || station >= Settings.streamTitles.Count) { return PluginName; }
+            else { return Settings.streamTitles[station]; }
         }
 
         public async Task<IcecastStatus> GetMetadata(string url = "") {
@@ -319,9 +320,9 @@ namespace NetRadio
         }
 
         public async Task TrackMetadata(bool overrideCancel = false) {
-            string urlForCurrent = NetRadio.StandardizeURL(NetRadioSettings.configURLs[currentStation]);
-            bool cancelTracking = NetRadioSaveData.stationSettingsByURL.ContainsKey(urlForCurrent) 
-                                    ? NetRadioSaveData.stationSettingsByURL[urlForCurrent].metadataMode == 0 : false;
+            string urlForCurrent = NetRadio.StandardizeURL(Settings.configURLs[currentStation]);
+            bool cancelTracking = SaveData.stationSettingsByURL.ContainsKey(urlForCurrent) 
+                                    ? SaveData.stationSettingsByURL[urlForCurrent].metadataMode == 0 : false;
             if (!overrideCancel && (!enableMetadataTracking || cancelTracking)) { return; }
             trackingMetadata = true;
 
@@ -337,8 +338,8 @@ namespace NetRadio
                         currentMetadata = await GetMetaDataFromIceCastStream(currentStationURL); 
                         float processingTime = Time.realtimeSinceStartup - realtimeAtStart;
                         if (currentMetadata != oldMetadata) {
-                            decimal savedTime = NetRadioSaveData.stationSettingsByURL.ContainsKey(urlForCurrent) 
-                                    ? NetRadioSaveData.stationSettingsByURL[urlForCurrent].metadataTimeOffsetSeconds : (decimal)0.0;
+                            decimal savedTime = SaveData.stationSettingsByURL.ContainsKey(urlForCurrent) 
+                                    ? SaveData.stationSettingsByURL[urlForCurrent].metadataTimeOffsetSeconds : (decimal)0.0;
                             metadataTimeOffset = (float)savedTime;
                             if (metadataTimeOffset > 0f && looped) { 
                                 awaitTime = (int)Mathf.Clamp(awaitTime - metadataTimeOffset*1000.0f, 20.0f, 2000.0f); 
@@ -364,7 +365,7 @@ namespace NetRadio
             if (!playing) { return; }
             currentSong = originalMetadata.icestats.source[0].title;
             Log.LogInfo("Metadata updated for station " + GetStationTitle() + ": " + currentSong);
-            NetRadioPlugin.UpdateCurrentSong();
+            NetRadio.UpdateCurrentSong();
         }
 
         private System.Net.Http.HttpClient CreateHTTPClient() { 
@@ -414,12 +415,12 @@ namespace NetRadio
             return null;
         }
 
-        public static NetRadioManager CreateRadio(Transform parent) {
+        public static RadioManager CreateRadio(Transform parent) {
             GameObject radioHolder = new GameObject();
-            NetRadioManager NetRadioManager = radioHolder.AddComponent<NetRadioManager>();
+            RadioManager RadioManager = radioHolder.AddComponent<RadioManager>();
             radioHolder.transform.parent = parent;
-            //NetRadioManager.gameObject.transform.position = parent.transform.position;
-            return NetRadioManager;
+            //RadioManager.gameObject.transform.position = parent.transform.position;
+            return RadioManager;
         }
 
         public async Task DelayTrackingInSteps(int delayTime, int step = 20) {

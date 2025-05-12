@@ -23,6 +23,8 @@ using System.Text;
 using CommonAPI;
 using CommonAPI.Phone;
 using CommonAPI.UI;
+using NetRadio.Apps;
+
 
 namespace NetRadio
 {
@@ -36,10 +38,10 @@ namespace NetRadio
         public static AudioSubSystem audioSubSystem { get { return Reptile.Core.Instance.AudioManager.audioSubSystem as AudioSubSystem; } }
         public static AudioManager audioManager { get { return Reptile.Core.Instance.AudioManager as AudioManager; } }
 
-        public static float radioMusicVolume { get { return audioSubSystem.GetChannelVolumeScale(AudioChannelID.Music, audioManager.musicAudioMaxVolume01Clamped) * audioSubSystem.GetChannelVolumeScale(AudioChannelID.Master, audioManager.masterAudioMaxVolume01Clamped) * NetRadioSettings.streamVolume.Value; }}
+        public static float radioMusicVolume { get { return audioSubSystem.GetChannelVolumeScale(AudioChannelID.Music, audioManager.musicAudioMaxVolume01Clamped) * audioSubSystem.GetChannelVolumeScale(AudioChannelID.Master, audioManager.masterAudioMaxVolume01Clamped) * Settings.streamVolume.Value; }}
         public static float sfxVolume { get { return audioSubSystem.GetChannelVolumeScale(AudioChannelID.Master, audioManager.masterAudioMaxVolume01Clamped) * audioSubSystem.GetChannelVolumeScale(AudioChannelID.Sfx, audioManager.masterAudioMaxVolume01Clamped); } }
 
-        public static NetRadioManager GlobalRadio;
+        public static RadioManager GlobalRadio;
         //public static AppNetRadio radioApp { get { return AppNetRadio.Instance } }
 
         public const string PluginName = "NetRadio";
@@ -52,7 +54,7 @@ namespace NetRadio
         public static Color LabelUnselectedColorDefault = Color.white;
 
         public static int waveOutLatency = 50;
-        public static float bufferTimeInSeconds { get { return NetRadioSettings.extraBufferSec.Value; }}
+        public static float bufferTimeInSeconds { get { return Settings.extraBufferSec.Value; }}
 
         public static List<string> hasRedir = new List<string>{};
 
@@ -93,7 +95,7 @@ namespace NetRadio
         public static bool IsStationButton(SimplePhoneButton button) {
             if (button == null || button.Label == null) { return false; }
             int childCount = button.Label.gameObject.transform.childCount;
-            bool textMatches = button.Label.text.Contains("Custom Station") || button.Label.text == PluginName || NetRadioSettings.streamTitles.Contains(button.Label.text);
+            bool textMatches = button.Label.text.Contains("Custom Station") || button.Label.text == PluginName || Settings.streamTitles.Contains(button.Label.text);
             return childCount > 2 && textMatches;
         }
 
@@ -152,6 +154,27 @@ namespace NetRadio
                 parentName.Append(uri.Segments[i]);
             }
             return parentName.ToString();
+        }
+
+        public static void UpdateGlobalRadioVolume() {
+            string urlForCurrent = NetRadio.StandardizeURL(NetRadio.GlobalRadio.currentStationURL);
+            float volumeMultiplier = SaveData.stationSettingsByURL.ContainsKey(urlForCurrent) 
+                    ? (float)SaveData.stationSettingsByURL[urlForCurrent].volume : 1f;
+            NetRadio.GlobalRadio.radioVolume = NetRadio.radioMusicVolume * volumeMultiplier;
+        }
+
+        public static void UpdateCurrentSong(bool skipCheck = false) {
+            if (!NetRadio.GlobalRadio.playing) { return; }
+            if (skipCheck || NetRadio.PlayerUsingMusicApp()) {
+                AppMusicPlayer musicApp = NetRadio.player.phone.m_CurrentApp as AppMusicPlayer;
+                
+                MusicTrack dummyTrack = ScriptableObject.CreateInstance<MusicTrack>(); //new MusicTrack();
+                dummyTrack.AudioClip = null;
+                dummyTrack.Artist = NetRadio.GlobalRadio.GetStationTitle();
+                dummyTrack.Title = NetRadio.GlobalRadio.currentSong; 
+                
+                musicApp.m_StatusPanel.OnNewTrack(dummyTrack);
+            }
         }
     }
 }

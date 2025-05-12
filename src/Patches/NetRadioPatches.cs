@@ -16,8 +16,9 @@ using System.IO;
 using CommonAPI;
 using CommonAPI.Phone;
 using static NetRadio.NetRadio;
+using NetRadio.Apps;
 
-namespace NetRadio {
+namespace NetRadio.Patches {
     [HarmonyPatch(typeof(AppMusicPlayer))]
     internal class MusicAppPatches {
         [HarmonyPrefix]
@@ -35,7 +36,7 @@ namespace NetRadio {
         [HarmonyPostfix]
         [HarmonyPatch(nameof(AppMusicPlayer.OnAppEnable))]
         public static void OnEnable_Refresh() {
-            NetRadioPlugin.UpdateCurrentSong(true); 
+            NetRadio.UpdateCurrentSong(true); 
         }
     }
 
@@ -66,7 +67,7 @@ namespace NetRadio {
         public static void OnNewTrack_RadioUpdate(MusicPlayerStatusPanel __instance) {
             if (__instance.m_CurrentTrack.Artist == GlobalRadio.GetStationTitle()) { return; }
             if (GlobalRadio.playing) {
-                NetRadioPlugin.UpdateCurrentSong();
+                NetRadio.UpdateCurrentSong();
             }
         }
     }
@@ -89,10 +90,10 @@ namespace NetRadio {
             if (NetRadio.gameStarted) { return; }
             NetRadio.gameStarted = true;
 
-            if (NetRadioSettings.playOnStartup.Value) {
+            if (Settings.playOnStartup.Value) {
                 _= NetRadio.MuteUntilRadioPlaying();
-                if (NetRadioSettings.startupIndex.Value == -1) { NetRadio.GlobalRadio.PlayRandomStation(); }
-                else { NetRadio.GlobalRadio.PlayRadioStation(NetRadioSettings.startupIndex.Value); }
+                if (Settings.startupIndex.Value == -1) { NetRadio.GlobalRadio.PlayRandomStation(); }
+                else { NetRadio.GlobalRadio.PlayRadioStation(Settings.startupIndex.Value); }
                 AppNetRadio.PlayNoise(); //AppNetRadio.waveOut.Play();
                 AppNetRadio.musicPlayerWasInterrupted = false;
             }

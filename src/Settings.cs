@@ -6,10 +6,11 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
+using NetRadio.Apps;
 
 namespace NetRadio
 {
-    internal class NetRadioSettings {
+    internal class Settings {
         public static ConfigEntry<string> streamURLsUnsplit;
         public static ConfigEntry<float> streamVolume;
         public static ConfigEntry<bool> playOnStartup;

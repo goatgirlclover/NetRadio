@@ -17,6 +17,7 @@ using CSCore;
 using CSCore.Ffmpeg;
 using CSCore.Streams;
 using CommonAPI;
+using NetRadio.Apps;
 
 namespace NetRadio
 {
@@ -42,12 +43,12 @@ namespace NetRadio
             Harmony.PatchAll(); 
             Logger.LogInfo($"Plugin " + NetRadio.PluginName + " is loaded!");
 
-            NetRadio.GlobalRadio = NetRadioManager.CreateRadio(this.transform);
+            NetRadio.GlobalRadio = RadioManager.CreateRadio(this.transform);
             NetRadio.GlobalRadio.volume = 1.0f;
             
             AppNetRadio.Initialize();
             AppSelectedStation.Initialize();
-            NetRadioSettings.BindSettings(Config);
+            Settings.BindSettings(Config);
 
             foreach (var plugin in BepInEx.Bootstrap.Chainloader.PluginInfos) { 
                 if (plugin.Value.Metadata.GUID.Contains("BombRushRadio")) { hasBRR = true; } 
@@ -72,9 +73,9 @@ namespace NetRadio
         }
 
         private void Update() {
-            if (NetRadio.GlobalRadio is NetRadioManager) {
+            if (NetRadio.GlobalRadio is RadioManager) {
                 if (NetRadio.GlobalRadio.playing) {
-                    UpdateGlobalRadioVolume();
+                    NetRadio.UpdateGlobalRadioVolume();
                     if (NetRadio.musicPlayer.IsPlaying) { NetRadio.musicPlayer.ForcePaused(); }
                 }
 
@@ -93,29 +94,8 @@ namespace NetRadio
                 }
             }
 
-            if (NetRadio.pressedAnyButtonIn(NetRadioSettings.keybindsReload)) {
-                NetRadioManager.ReloadAllStations();
-            }
-        }
-
-        public static void UpdateGlobalRadioVolume() {
-            string urlForCurrent = NetRadio.StandardizeURL(NetRadio.GlobalRadio.currentStationURL);
-            float volumeMultiplier = NetRadioSaveData.stationSettingsByURL.ContainsKey(urlForCurrent) 
-                    ? (float)NetRadioSaveData.stationSettingsByURL[urlForCurrent].volume : 1f;
-            NetRadio.GlobalRadio.radioVolume = NetRadio.radioMusicVolume * volumeMultiplier;
-        }
-
-        public static void UpdateCurrentSong(bool skipCheck = false) {
-            if (!NetRadio.GlobalRadio.playing) { return; }
-            if (skipCheck || NetRadio.PlayerUsingMusicApp()) {
-                AppMusicPlayer musicApp = NetRadio.player.phone.m_CurrentApp as AppMusicPlayer;
-                
-                MusicTrack dummyTrack = ScriptableObject.CreateInstance<MusicTrack>(); //new MusicTrack();
-                dummyTrack.AudioClip = null;
-                dummyTrack.Artist = NetRadio.GlobalRadio.GetStationTitle();
-                dummyTrack.Title = NetRadio.GlobalRadio.currentSong; 
-                
-                musicApp.m_StatusPanel.OnNewTrack(dummyTrack);
+            if (NetRadio.pressedAnyButtonIn(Settings.keybindsReload)) {
+                RadioManager.ReloadAllStations();
             }
         }
     }

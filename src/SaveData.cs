@@ -11,9 +11,9 @@ using static NetRadio.NetRadio;
 
 namespace NetRadio
 {
-    public class NetRadioSaveData : CustomSaveData
+    public class SaveData : CustomSaveData
     {
-        public static NetRadioSaveData Instance { get; private set; }
+        public static SaveData Instance { get; private set; }
         
         public static readonly int saveVersion = 1; // current save file version (Write())
         private static int readSaveVersion = 0; // save version from file (Read())
@@ -21,7 +21,7 @@ namespace NetRadio
         public static Dictionary<string, StationSettings> stationSettingsByURL = new Dictionary<string, StationSettings>();
 
         // save location: %localappdata%\Bomb Rush Cyberfunk Modding\NetRadio\saves
-        public NetRadioSaveData() : base("NetRadio", "Slot{0}.data", SaveLocations.LocalAppData)
+        public SaveData() : base("NetRadio", "Slot{0}.data", SaveLocations.LocalAppData)
         {
             Instance = this;
             AutoSave = false; 
@@ -31,8 +31,8 @@ namespace NetRadio
         public override void Initialize()
         {
             stationSettingsByURL = new Dictionary<string, StationSettings>();
-            NetRadioSettings.LoadURLs();
-            foreach (string streamURL in NetRadioSettings.configURLs) {
+            Settings.LoadURLs();
+            foreach (string streamURL in Settings.configURLs) {
                 if (!stationSettingsByURL.ContainsKey(StandardizeURL(streamURL))) {
                     stationSettingsByURL.Add(StandardizeURL(streamURL), new StationSettings());
                 }

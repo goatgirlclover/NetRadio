@@ -22,7 +22,7 @@ using TMPro;
 using static NetRadio.NetRadio;
 using NetRadio.Metadata;
 
-namespace NetRadio
+namespace NetRadio.Apps
 {
     public class NetRadioCustomApp : CustomApp {
         public UnityEngine.Transform overlayInstance = null; 
@@ -182,34 +182,34 @@ namespace NetRadio
             }
 
             if (changingVolume) {
-                string key = StandardizeURL(NetRadioSettings.configURLs[currentStationIndex]);
+                string key = StandardizeURL(Settings.configURLs[currentStationIndex]);
                 decimal value = (decimal)(((decimal)volumeInPercent)/((decimal)100.00));
-                if (NetRadioSaveData.stationSettingsByURL.ContainsKey(key)) {
-                    NetRadioSaveData.stationSettingsByURL[key].volume = value;
+                if (SaveData.stationSettingsByURL.ContainsKey(key)) {
+                    SaveData.stationSettingsByURL[key].volume = value;
                 } else { 
                     StationSettings stationSettings = new StationSettings();
                     stationSettings.volume = value;
-                    NetRadioSaveData.stationSettingsByURL.Add(key, stationSettings); 
+                    SaveData.stationSettingsByURL.Add(key, stationSettings); 
                 }
             } else if (changingMetadataMode) {
-                string key = StandardizeURL(NetRadioSettings.configURLs[currentStationIndex]);
+                string key = StandardizeURL(Settings.configURLs[currentStationIndex]);
                 int value = currentMetadataMode;
-                if (NetRadioSaveData.stationSettingsByURL.ContainsKey(key)) {
-                    NetRadioSaveData.stationSettingsByURL[key].metadataMode = value;
+                if (SaveData.stationSettingsByURL.ContainsKey(key)) {
+                    SaveData.stationSettingsByURL[key].metadataMode = value;
                 } else { 
                     StationSettings stationSettings = new StationSettings();
                     stationSettings.metadataMode = value;
-                    NetRadioSaveData.stationSettingsByURL.Add(key, stationSettings); 
+                    SaveData.stationSettingsByURL.Add(key, stationSettings); 
                 }
             } else if (changingMetadataOffset) {
-                string key = StandardizeURL(NetRadioSettings.configURLs[currentStationIndex]);
+                string key = StandardizeURL(Settings.configURLs[currentStationIndex]);
                 decimal value = (decimal)(((decimal)metadataOffsetInMS) * ((decimal)0.001));
-                if (NetRadioSaveData.stationSettingsByURL.ContainsKey(key)) {
-                    NetRadioSaveData.stationSettingsByURL[key].metadataTimeOffsetSeconds = value;
+                if (SaveData.stationSettingsByURL.ContainsKey(key)) {
+                    SaveData.stationSettingsByURL[key].metadataTimeOffsetSeconds = value;
                 } else { 
                     StationSettings stationSettings = new StationSettings();
                     stationSettings.metadataTimeOffsetSeconds = value;
-                    NetRadioSaveData.stationSettingsByURL.Add(key, stationSettings); 
+                    SaveData.stationSettingsByURL.Add(key, stationSettings); 
                 }
             }
         }
@@ -235,7 +235,7 @@ namespace NetRadio
             changingAny = false;
             time = 0.0f;
             
-            NetRadioSaveData.Instance.Save();
+            SaveData.Instance.Save();
         }
 
         public override void OnPressUp() { 
@@ -275,16 +275,16 @@ namespace NetRadio
         }
 
         public void AddUsualButtons() {
-            string urlForCurrent = NetRadio.StandardizeURL(NetRadioSettings.configURLs[currentStationIndex]);
-            float volumeMultiplier = NetRadioSaveData.stationSettingsByURL.ContainsKey(urlForCurrent) 
-                        ? (float)NetRadioSaveData.stationSettingsByURL[urlForCurrent].volume : 1f;
+            string urlForCurrent = NetRadio.StandardizeURL(Settings.configURLs[currentStationIndex]);
+            float volumeMultiplier = SaveData.stationSettingsByURL.ContainsKey(urlForCurrent) 
+                        ? (float)SaveData.stationSettingsByURL[urlForCurrent].volume : 1f;
             float volumeHund = volumeMultiplier * 100f;
             volumeInPercent = 5 * (int)Math.Round(volumeHund / 5.0);
 
-            currentMetadataMode = NetRadioSaveData.stationSettingsByURL.ContainsKey(urlForCurrent) 
-                        ? (int)NetRadioSaveData.stationSettingsByURL[urlForCurrent].metadataMode : 1;
-            metadataOffsetInMS = NetRadioSaveData.stationSettingsByURL.ContainsKey(urlForCurrent) 
-                        ? (int)(NetRadioSaveData.stationSettingsByURL[urlForCurrent].metadataTimeOffsetSeconds*((decimal)1000.0)) : 0;
+            currentMetadataMode = SaveData.stationSettingsByURL.ContainsKey(urlForCurrent) 
+                        ? (int)SaveData.stationSettingsByURL[urlForCurrent].metadataMode : 1;
+            metadataOffsetInMS = SaveData.stationSettingsByURL.ContainsKey(urlForCurrent) 
+                        ? (int)(SaveData.stationSettingsByURL[urlForCurrent].metadataTimeOffsetSeconds*((decimal)1000.0)) : 0;
 
             ScrollView.RemoveAllButtons();
 
@@ -331,7 +331,7 @@ namespace NetRadio
             nextButton.OnConfirm += () => {
                 time = 0.0f;
                 try { 
-                    GUIUtility.systemCopyBuffer = NetRadioSettings.configURLs[currentStationIndex]; 
+                    GUIUtility.systemCopyBuffer = Settings.configURLs[currentStationIndex]; 
                     justCopied = true;
                 } catch (System.Exception ex) { 
                     Log.LogError($"Error copying to clipboard: {ex.Message}"); 
@@ -353,9 +353,9 @@ namespace NetRadio
         }
 
         public async Task GetStationMetadata() {
-            string urlForCurrent = NetRadio.StandardizeURL(NetRadioSettings.configURLs[currentStationIndex]);
-            bool cancelTracking = NetRadioSaveData.stationSettingsByURL.ContainsKey(urlForCurrent) 
-                                    ? NetRadioSaveData.stationSettingsByURL[urlForCurrent].metadataMode == 0 : false;
+            string urlForCurrent = NetRadio.StandardizeURL(Settings.configURLs[currentStationIndex]);
+            bool cancelTracking = SaveData.stationSettingsByURL.ContainsKey(urlForCurrent) 
+                                    ? SaveData.stationSettingsByURL[urlForCurrent].metadataMode == 0 : false;
             if (cancelTracking) { return; }
 
             await Task.Delay(200); 
@@ -472,7 +472,7 @@ namespace NetRadio
         public static string currentNowPlayingText = "Now playing";
         public static float currentNowPlayingHeight = 100f;
 
-        public static string currentSFXPack { get { return NetRadioSettings.sfxPack.Value.ToLower(); } }
+        public static string currentSFXPack { get { return Settings.sfxPack.Value.ToLower(); } }
 
         public static void Initialize() { 
             IconSprite = LoadSprite(Path.Combine(dataDirectory, "icon.png")); 
@@ -533,7 +533,7 @@ namespace NetRadio
 
         public override void OnAppEnable()
         {
-            //NetRadioSettings.LoadURLs(); 
+            //Settings.LoadURLs(); 
             Instance = this;
             //this.ScrollView.Separation = 80f; 
 
@@ -689,7 +689,7 @@ namespace NetRadio
 
             int i = -1;
             int numberOfCustomStreams = 0;
-            foreach (string url in NetRadioSettings.configURLs) {//GlobalRadio.streamURLs) {
+            foreach (string url in Settings.configURLs) {//GlobalRadio.streamURLs) {
                 i++;
                 string stationTitle = GlobalRadio.GetStationTitle(i);
                 if (stationTitle == PluginName) { 
@@ -700,7 +700,7 @@ namespace NetRadio
                 nextButton.OnConfirm += () => {
                     if (GlobalRadio.threadRunning) { return; }
 
-                    if ((GlobalRadio.playing && filteredButtons.IndexOf(nextButton) == GlobalRadio.currentStation) || !NetRadioSettings.configureRequireConnection.Value) {
+                    if ((GlobalRadio.playing && filteredButtons.IndexOf(nextButton) == GlobalRadio.currentStation) || !Settings.configureRequireConnection.Value) {
                         AppSelectedStation.currentStationIndex = filteredButtons.IndexOf(nextButton);
                         MyPhone.OpenApp(typeof(AppSelectedStation));
                         return;
@@ -755,7 +755,7 @@ namespace NetRadio
             globalRadioWasInterrupted = GlobalRadio.playing && !GlobalRadio.failedToLoad;
 
             musicPlayer.ForcePaused();
-            GlobalRadio.Play(index); //NetRadioPlugin.GlobalRadio.streamURLs.IndexOf(urlLabels[i].text));//(nextButton.Label.text));
+            GlobalRadio.Play(index); 
         
             PlayNoise();
             StartCoroutine(Instance.ClearButtons()); 
@@ -788,7 +788,7 @@ namespace NetRadio
         }
 
         public static void ResumePreviousMusic(bool includeSamples = false) {
-            if (!NetRadioSettings.restartMusic.Value) { return; }
+            if (!Settings.restartMusic.Value) { return; }
             int sampleValue = includeSamples ? musicPlayerInterruptSamples : 0; 
             if (musicPlayerWasInterrupted) {
                 musicPlayerWasInterrupted = false;
