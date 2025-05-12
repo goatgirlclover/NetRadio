@@ -227,16 +227,22 @@ namespace NetRadio
 
             //ScrollView.RemoveAllButtons();
             //AddUsualButtons();
-            ScrollView.RemoveButton(ScrollView.Buttons.Count - 1); 
-            ScrollView.RemoveButton(ScrollView.Buttons.Count - 1); 
-            ScrollView.RemoveButton(ScrollView.Buttons.Count - 1); 
-            var nextButton = AppNetRadio.CreateHeaderButton("Listeners: " + stationInfo.listeners, 75f);
+            foreach (SimplePhoneButton button in ScrollView.Buttons) { if IsHeaderButton(button) {
+                if (button.Label.text.Contains("Peak listeners:")) {
+                    button.Label.text = "Peak listeners: " + stationInfo.listener_peak;
+                } else if (button.Label.text.Contains("Listeners:")) {
+                    button.Label.text = "Listeners: " + stationInfo.listeners;
+                } else if (button.Label.text.Contains("Genre:")) {
+                    button.Label.text == "Genre: " + stationInfo.genre;
+                }
+            } }
+            /*var nextButton = AppNetRadio.CreateHeaderButton("Listeners: " + stationInfo.listeners, 75f);
             ScrollView.AddButton(nextButton);
             nextButton = AppNetRadio.CreateHeaderButton("Peak listeners: " + stationInfo.listener_peak, 75f);
             ScrollView.AddButton(nextButton);
             nextButton = AppNetRadio.CreateHeaderButton("Genre: " + stationInfo.genre, 75f);
             ScrollView.AddButton(nextButton);
-            /*nextButton = AppNetRadio.CreateHeaderButton("Streaming since " + stationInfo.stream_start);
+            nextButton = AppNetRadio.CreateHeaderButton("Streaming since " + stationInfo.stream_start);
             ScrollView.AddButton(nextButton);*/
         }
 
