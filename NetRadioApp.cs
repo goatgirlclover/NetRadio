@@ -156,6 +156,7 @@ namespace NetRadio
             bool isStation = GlobalRadio.playing && GlobalRadio.currentStation == currentStationIndex;
             var firstButton = PhoneUIUtility.CreateSimpleButton(isStation ? "Disconnect..." : "Connect...");
              firstButton.OnConfirm += () => {
+                GlobalRadio.ResetMetadata();
                 if (GlobalRadio.playing && GlobalRadio.currentStation == currentStationIndex) {
                     GlobalRadio.Stop();
                     AppNetRadio.PlaySFX("disconnect");
@@ -227,13 +228,13 @@ namespace NetRadio
 
             //ScrollView.RemoveAllButtons();
             //AddUsualButtons();
-            foreach (SimplePhoneButton button in ScrollView.Buttons) { if IsHeaderButton(button) {
+            foreach (SimplePhoneButton button in ScrollView.Buttons) { if (IsHeaderButton(button)) {
                 if (button.Label.text.Contains("Peak listeners:")) {
                     button.Label.text = "Peak listeners: " + stationInfo.listener_peak;
                 } else if (button.Label.text.Contains("Listeners:")) {
                     button.Label.text = "Listeners: " + stationInfo.listeners;
                 } else if (button.Label.text.Contains("Genre:")) {
-                    button.Label.text == "Genre: " + stationInfo.genre;
+                    button.Label.text = "Genre: " + stationInfo.genre;
                 }
             } }
             /*var nextButton = AppNetRadio.CreateHeaderButton("Listeners: " + stationInfo.listeners, 75f);
@@ -364,11 +365,20 @@ namespace NetRadio
             }
         }
 
-        public override void OnPressUp() { // if selected the 2nd one and the top one is a blank header, don't bother
+        private void UpdateGlobalRadioMetaMode() {
+            GlobalRadio.ResetMetadata();
+            if (currentMetadataMode == 0) { GlobalRadio.StopTrackingMetadata(false); }
+            else if (!GlobalRadio.trackingMetadata) { 
+                GlobalRadio.StartTrackingMetadata(true); 
+            }
+        }
+
+        public override void OnPressUp() { 
             if (changingVolume) {
                 volumeInPercent = Mathf.Clamp(volumeInPercent + 5, 0, 200);
             } else if (changingMetadataMode) {
                 currentMetadataMode = currentMetadataMode == 1 ? 0 : 1; 
+                UpdateGlobalRadioMetaMode();
             } else if (changingMetadataOffset) {
                 metadataOffsetInMS = Mathf.Clamp(metadataOffsetInMS + 250, 0, 99000);
             }
@@ -376,11 +386,12 @@ namespace NetRadio
             if (!changingAny) { base.OnPressUp(); }
         } 
 
-        public override void OnPressDown() { // if selected the 2nd-to-last one and the bottom one is blank, don't bother
+        public override void OnPressDown() { 
             if (changingVolume) {
                 volumeInPercent = Mathf.Clamp(volumeInPercent - 5, 0, 200);
             } else if (changingMetadataMode) {
                 currentMetadataMode = currentMetadataMode == 1 ? 0 : 1; 
+                UpdateGlobalRadioMetaMode();
             } else if (changingMetadataOffset) {
                 metadataOffsetInMS = Mathf.Clamp(metadataOffsetInMS - 250, 0, 99000);
             }

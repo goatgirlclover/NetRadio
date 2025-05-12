@@ -77,7 +77,7 @@ namespace NetRadio {
         [HarmonyPostfix]
         static void LoadingMenu_ResetVars() {
             NetRadio.gameStarted = false;
-            GlobalRadio.Stop();
+            GlobalRadio.CleanUp();//GlobalRadio.Stop();
         }
     }
 

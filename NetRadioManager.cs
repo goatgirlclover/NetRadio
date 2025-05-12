@@ -62,18 +62,18 @@ namespace NetRadio
         public bool failedToLoad = false;
         
         private static System.Net.Http.HttpClient m_httpClient = null;
-        public IcecastStatus currentMetadata;
+        public IcecastStatus currentMetadata { get; private set; }
         public string currentSong { get; private set; }
-        public float connectionTime = 0f;
-        public float metadataTimeOffset = 0f;
+        private float connectionTime = 0f;
+        private float metadataTimeOffset = 0f;
 
-        public static bool enableMetadataTracking = true;
+        public static bool enableMetadataTracking { get; private set; } = true;
         private Task trackingMetadataTask;
         public bool trackingMetadata { get; private set; } = false;
 
         private long oldPosition = -100;
         private int amountOfTimesFoundAtSamePosition = 0;
-        public bool skipDisposal = false;
+        public bool skipDisposal { get; private set; } = false;
         
         private void Start() { 
             Log.LogInfo("Loaded radio manager");
@@ -107,16 +107,30 @@ namespace NetRadio
 
         void OnDisable() {
             //Instances.Remove(this);
-            StopRadio();
-            skipDisposal = false;
             /*if (playURLChildThread != null) { playURLChildThread.Abort(); }
             if (playURLThread != null) { playURLThread.Abort(); }*/
-            trackingMetadata = false;
+            skipDisposal = false;
+            CleanUp();
+        }
+
+        public void CleanUp() {
+            StopRadio();
             stopped = true;
-            
-            trackingMetadataTask.Wait();
-            trackingMetadataTask.Dispose(); 
-            DisposeOfReaders();
+            try { StopTrackingMetadata(); DisposeOfReaders(); } 
+            catch (System.Exception) { return; }
+        }
+
+        public void ResetMetadata() {
+            currentSong = "Unknown Track"; 
+            currentMetadata = null;
+        }
+
+        public void StopTrackingMetadata(bool wait = true) {
+            trackingMetadata = false;
+            if (trackingMetadataTask != null && wait) {
+                trackingMetadataTask.Wait();
+                trackingMetadataTask.Dispose(); 
+            }
         }
 
         private void DisposeOfReaders() {
@@ -253,11 +267,15 @@ namespace NetRadio
             }
 
             if (GlobalRadio == this && !failedToLoad && !trackingMetadata) {
-                if (trackingMetadataTask != null) { trackingMetadataTask.Wait(); } 
-                trackingMetadataTask = TrackMetadata(); 
+                StartTrackingMetadata();
             }
 
             stopped = false;
+        }
+
+        public void StartTrackingMetadata(bool overrideCancel = false) {
+            if (trackingMetadataTask != null) { trackingMetadataTask.Wait(); } 
+            trackingMetadataTask = TrackMetadata(overrideCancel); 
         }
 
         private async Task OutputStopped(PlaybackStoppedEventArgs args) {
@@ -293,7 +311,7 @@ namespace NetRadio
         public void StopRadio() {
             stopped = true;
             trackingMetadata = false;
-            currentSong = "Unknown Track";
+            ResetMetadata();
             if (directSoundOut != null) { directSoundOut.Stop(); }
         }
 
@@ -312,11 +330,11 @@ namespace NetRadio
             return metadata; 
         }
 
-        private async Task TrackMetadata() {
+        public async Task TrackMetadata(bool overrideCancel = false) {
             string urlForCurrent = NetRadio.StandardizeURL(NetRadioSettings.configURLs[currentStation]);
             bool cancelTracking = NetRadioSaveData.stationSettingsByURL.ContainsKey(urlForCurrent) 
                                     ? NetRadioSaveData.stationSettingsByURL[urlForCurrent].metadataMode == 0 : false;
-            if (!enableMetadataTracking || cancelTracking) { return; }
+            if (!overrideCancel && (!enableMetadataTracking || cancelTracking)) { return; }
             trackingMetadata = true;
 
             IcecastStatus oldMetadata = null; 
@@ -422,7 +440,10 @@ namespace NetRadio
             while (i*step < delayTime) { 
                 await Task.Delay(step);
                 i++;
-                if (!trackingMetadata) { return; }
+                if (!trackingMetadata) { 
+                    Log.LogWarning("Delay ending early (" + (i*step).ToString() + "/" + delayTime.ToString() + ")");
+                    return; 
+                }
             }
             return;
         }
