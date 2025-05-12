@@ -24,7 +24,7 @@ namespace NetRadio
 
         public static ConfigEntry<string> sfxPack;
         public static AcceptableValueList<string> sfxPacks = new AcceptableValueList<string>(
-            ["Default", "Skype"]
+            ["Default", "Legacy", "Dial-up", "Skype", "Discord", "Wii", "3DS"]
         );
 
         public static List<KeyCode> keybindsReload;
