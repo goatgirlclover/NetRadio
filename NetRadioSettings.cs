@@ -19,6 +19,7 @@ namespace NetRadio
         public static ConfigEntry<float> extraBufferSec;
         public static ConfigEntry<string> keybindsReloadUnsplit;
         public static ConfigEntry<bool> noThreads;
+        public static ConfigEntry<bool> restartMusic; 
 
         public static ConfigEntry<string> sfxPack;
         public static AcceptableValueList<string> sfxPacks = new AcceptableValueList<string>(
@@ -51,19 +52,22 @@ namespace NetRadio
             streamURLsUnsplit.SettingChanged += UpdateSettingsEvent;
 
             streamVolume = Config.Bind("Settings", "Radio Volume", 1f, "Relative volume of all radio streams compared to in-game music. Note that you can set individual stations' volumes in the NetRadio app.");
+            extraBufferSec = Config.Bind("Settings", "Buffer Time", 0.5f, "The length of the station's buffer in seconds. A longer buffer delays audio playback, but reduces stuttering.");
 
             playOnStartup = Config.Bind("Settings", "Play Radio on Startup", false, "Whether or not a radio station should automatically play upon loading a save.");
             startupIndex = Config.Bind("Settings", "Startup Radio Station", -1, "The index of the station to play automatically if Play Radio on Startup is enabled (the first station in the NetRadio app is at index 0). If set to -1, the station will be chosen randomly.");
             configureRequireConnection = Config.Bind("Settings", "Configuring Stations Requires Connection", true, "Whether it is possible to change a station's settings within the NetRadio app without connecting to the station.");
-            extraBufferSec = Config.Bind("Settings", "Buffer Time", 0.5f, "The length of the station's buffer in seconds. A longer buffer delays audio playback, but reduces stuttering.");
+            restartMusic = Config.Bind("Settings", "Restart Interrupted Music", true, "Whether to either restart the in-game music or reconnect to a previous station when disconnecting from (or failing to connect to) a radio station.");
+            
+            sfxPack = Config.Bind("Settings", "App SFX Pack", "Default", new ConfigDescription("The sound effect pack to use within the NetRadio app. Affects sound effects for tuning into a station, connecting, disconnecting, failing to connect, and losing connection mid-stream.", sfxPacks));
             
             keybindsReloadUnsplit = Config.Bind("Settings", "Reload Radios Keybinds", "F11", "Press to reload all in-game radio streams.");
             keybindsReloadUnsplit.SettingChanged += UpdateSettingsEvent;
 
-            sfxPack = Config.Bind("Settings", "App SFX Pack", "Default", new ConfigDescription("The sound effect pack to use within the NetRadio app. Affects sound effects for tuning into a station, connecting, disconnecting, failing to connect, and losing connection mid-stream.", sfxPacks));
-
             noThreads = Config.Bind("Settings", "Disable Multithreading", false, "EXPERIMENTAL! Prevent multithreading for radio streaming, causing the game to freeze when starting a radio. Not recommended.");
             //moreCodecs = Config.Bind("Settings", "Enable Media Foundation Codecs", false, "EXPERIMENTAL! Windows only. Allow the use of Windows Media Foundation codecs instead of FFmpeg. Note that if the Media Foundation player fails, the mod will fallback to FFmpeg.");
+
+
         }
 
         public static void UpdateSettingsEvent(object sender, EventArgs args) {

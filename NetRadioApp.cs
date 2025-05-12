@@ -691,6 +691,7 @@ namespace NetRadio
         }
 
         public static void ResumePreviousMusic(bool includeSamples = false) {
+            if (!NetRadioSettings.restartMusic.Value) { return; }
             int sampleValue = includeSamples ? musicPlayerInterruptSamples : 0; 
             if (musicPlayerWasInterrupted) {
                 musicPlayerWasInterrupted = false;
