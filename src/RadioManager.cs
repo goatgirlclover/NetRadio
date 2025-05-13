@@ -29,7 +29,7 @@ using NetRadio.Apps;
 
 namespace NetRadio
 {
-    public class RadioManager : MonoBehaviour
+    public class NetRadioManager : MonoBehaviour
     {
         public List<string> streamURLs = new List<string> {};
 
@@ -156,8 +156,8 @@ namespace NetRadio
         public static void ReloadAllStations() { // backup option for fixing syncing issues 
             Settings.LoadURLs();
             Settings.RefreshMusicApp();
-            RadioManager radioManager = NetRadio.GlobalRadio; 
-            //foreach (RadioManager radioManager in Resources.FindObjectsOfTypeAll<RadioManager>()) { 
+            NetRadioManager radioManager = NetRadio.GlobalRadio; 
+            //foreach (NetRadioManager radioManager in Resources.FindObjectsOfTypeAll<NetRadioManager>()) { 
                 if (radioManager != null && radioManager.currentStation >= 0 && radioManager.directSoundOut.PlaybackState != PlaybackState.Stopped) { 
                     radioManager.PlayRadioStation(radioManager.currentStation); 
                 }
@@ -445,12 +445,12 @@ namespace NetRadio
             return null;
         }
 
-        public static RadioManager CreateRadio(Transform parent) {
+        public static NetRadioManager CreateRadio(Transform parent) {
             GameObject radioHolder = new GameObject();
-            RadioManager RadioManager = radioHolder.AddComponent<RadioManager>();
+            NetRadioManager NetRadioManager = radioHolder.AddComponent<NetRadioManager>();
             radioHolder.transform.parent = parent;
-            //RadioManager.gameObject.transform.position = parent.transform.position;
-            return RadioManager;
+            //NetRadioManager.gameObject.transform.position = parent.transform.position;
+            return NetRadioManager;
         }
 
         public async Task DelayTrackingInSteps(int delayTime, int step = 20) {

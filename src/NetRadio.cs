@@ -41,7 +41,7 @@ namespace NetRadio
         public static float radioMusicVolume { get { return audioSubSystem.GetChannelVolumeScale(AudioChannelID.Music, audioManager.musicAudioMaxVolume01Clamped) * audioSubSystem.GetChannelVolumeScale(AudioChannelID.Master, audioManager.masterAudioMaxVolume01Clamped) * Settings.streamVolume.Value; }}
         public static float sfxVolume { get { return audioSubSystem.GetChannelVolumeScale(AudioChannelID.Master, audioManager.masterAudioMaxVolume01Clamped) * audioSubSystem.GetChannelVolumeScale(AudioChannelID.Sfx, audioManager.masterAudioMaxVolume01Clamped); } }
 
-        public static RadioManager GlobalRadio;
+        public static NetRadioManager GlobalRadio;
         //public static AppNetRadio radioApp { get { return AppNetRadio.Instance } }
 
         public const string PluginName = "NetRadio";
@@ -59,7 +59,7 @@ namespace NetRadio
         public static List<string> hasRedir = new List<string>{};
 
         public static void Update() {
-            if (NetRadio.GlobalRadio is RadioManager) {
+            if (NetRadio.GlobalRadio is NetRadioManager) {
                 if (NetRadio.GlobalRadio.playing) {
                     NetRadio.UpdateGlobalRadioVolume();
                     if (NetRadio.musicPlayer.IsPlaying) { NetRadio.musicPlayer.ForcePaused(); }
@@ -81,7 +81,7 @@ namespace NetRadio
             }
 
             if (NetRadio.pressedAnyButtonIn(Settings.keybindsReload)) {
-                RadioManager.ReloadAllStations();
+                NetRadioManager.ReloadAllStations();
             }
         }
 
