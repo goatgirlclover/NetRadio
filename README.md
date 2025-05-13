@@ -1,4 +1,4 @@
-<p align="center"> <img src="icon.png" alt="NetRadio icon" width="200"/> </p> 
+<p align="center"> <img src="icon_fullres.png" alt="NetRadio icon" width="200"/> </p> 
 <h1> <p align="center" > NetRadio </p> </h1> 
 
  A Bomb Rush Cyberfunk mod that allows you to listen to online radio stations live in-game.\
