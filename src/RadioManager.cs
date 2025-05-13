@@ -370,7 +370,6 @@ namespace NetRadio
 
         private void HandleMetadata(IcecastStatus originalMetadata) {
             if (!playing) { return; }
-            string oldSong = currentSong;
             Source source = GetSource(originalMetadata, currentStationURL);
             currentSong = source.title;
             if (!string.IsNullOrWhiteSpace(source.artist)) { 

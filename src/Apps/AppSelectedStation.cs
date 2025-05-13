@@ -48,12 +48,14 @@ public class AppSelectedStation : NetRadioCustomApp {
 
     public override bool Available => false;
 
+    public static string urlForCurrent { get { return NetRadio.StandardizeURL(Settings.configURLs[currentStationIndex]); } }
+    public static bool isStation { get { return GlobalRadio.playing && GlobalRadio.currentStation == currentStationIndex; } }
+
     public static void Initialize() { 
         PhoneAPI.RegisterApp<AppSelectedStation>("selected station"); 
     }
 
     public static void SetVariables() {
-        string urlForCurrent = NetRadio.StandardizeURL(Settings.configURLs[currentStationIndex]);
         float volumeMultiplier = SaveData.stationSettingsByURL.ContainsKey(urlForCurrent) 
                     ? (float)SaveData.stationSettingsByURL[urlForCurrent].volume : 1f;
         float volumeHund = volumeMultiplier * 100f;
@@ -109,7 +111,6 @@ public class AppSelectedStation : NetRadioCustomApp {
                 button.PlayDeselectAnimation(true);
                 //Log.LogInfo(button.Height);
             } else if (button.Label.text.EndsWith("nnect...")) {
-                bool isStation = GlobalRadio.playing && GlobalRadio.currentStation == currentStationIndex;
                 button.Label.text = (isStation ? "Disconnect..." : "Connect..."); 
             } else if (button.Label.text.Contains("Volume:")) {
                 button.Label.text = "Volume: " + volumeInPercent + "%"; 
@@ -231,7 +232,6 @@ public class AppSelectedStation : NetRadioCustomApp {
         ScrollView.AddButton(blankButton);
         AppNetRadio.UpdateNowPlayingButton(blankButton, ScrollView, false);
 
-        bool isStation = GlobalRadio.playing && GlobalRadio.currentStation == currentStationIndex;
         var firstButton = PhoneUIUtility.CreateSimpleButton(isStation ? "Disconnect..." : "Connect...");
             firstButton.OnConfirm += () => {
             GlobalRadio.ResetMetadata();
@@ -292,7 +292,6 @@ public class AppSelectedStation : NetRadioCustomApp {
     }
 
     public async Task GetStationMetadata() {
-        string urlForCurrent = NetRadio.StandardizeURL(Settings.configURLs[currentStationIndex]);
         bool cancelTracking = SaveData.stationSettingsByURL.ContainsKey(urlForCurrent) 
                                 ? SaveData.stationSettingsByURL[urlForCurrent].metadataMode == 0 : false;
         if (cancelTracking) { return; }
@@ -338,7 +337,6 @@ public class AppSelectedStation : NetRadioCustomApp {
     }
 
     private void UpdateGlobalRadioMetaMode() {
-        bool isStation = GlobalRadio.playing && GlobalRadio.currentStation == currentStationIndex;
         if (!isStation) { return; }
         GlobalRadio.ResetMetadata();
         if (currentMetadataMode == 0) { GlobalRadio.StopTrackingMetadata(false); }
