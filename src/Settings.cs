@@ -31,8 +31,13 @@ namespace NetRadio
         public static List<string> streamTitles = new List<string>{}; 
 
         // appended to start of station list
+        public const string FUFMurl = @"https://funkyunclefm.net:8443/fufm";
+        public static readonly List<string> previousFUFMurls = new List<string>() {
+            "fancynoise.net:8443/fufm.mp3", 
+        };
+
         public static readonly Dictionary<string, StationSettings> partneredStations = new Dictionary<string, StationSettings> {
-            { @"(FunkyUncleFM)https://funkyunclefm.net:8443/fufm,", new StationSettings() { metadataTimeOffsetSeconds = (decimal)7.00 } }
+            { "(FunkyUncleFM)" + FUFMurl + ",", new StationSettings() { metadataTimeOffsetSeconds = (decimal)7.00 } }
         };
         
 

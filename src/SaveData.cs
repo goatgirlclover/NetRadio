@@ -49,9 +49,17 @@ namespace NetRadio
                 for(var i = 0; i < stationCount; i++) {
                     var key = reader.ReadString();
                     var value = reader.ReadDecimal();
+                    
+                    foreach (string prevurl in Settings.previousFUFMurls) {
+                        if (key.Contains(prevurl)) { 
+                            key = StandardizeURL(Settings.FUFMurl); 
+                        }
+                    }
+                    
                     StationSettings stationSettings = new StationSettings(key); 
                     stationSettings.volume = value;
-                    stationSettingsByURL.Add(key, stationSettings);
+                    if (!stationSettingsByURL.ContainsKey(key)) { stationSettingsByURL.Add(key, stationSettings); }
+                    else { stationSettingsByURL[key] = stationSettings; }
                 }
             } else if (readSaveVersion == 1) {
                 for(var i = 0; i < stationCount; i++) {
@@ -95,7 +103,7 @@ namespace NetRadio
         public decimal metadataTimeOffsetSeconds = (decimal)0.00;
 
         public StationSettings() { }
-        public StationSettings(string associatedURL) {
+        public StationSettings(string associatedURL) : this() {
             foreach (string partnerURL in Settings.partneredStations.Keys.ToList()) {
                 if (partnerURL.Contains(associatedURL)) {
                     StationSettings target = Settings.partneredStations[partnerURL];
