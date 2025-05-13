@@ -294,7 +294,7 @@ public class AppSelectedStation : NetRadioCustomApp {
         IcecastStatus currentInfo = !(GlobalRadio.playing && GlobalRadio.currentStation == currentStationIndex)
                                     ? await GlobalRadio.GetMetadata(GlobalRadio.streamURLs[currentStationIndex])
                                     : GlobalRadio.currentMetadata;
-        Metadata.Source stationInfo = currentInfo.icestats.source[0]; 
+        Metadata.Source stationInfo = GetSource(currentInfo, urlForCurrent); 
 
 
         //ScrollView.RemoveAllButtons();

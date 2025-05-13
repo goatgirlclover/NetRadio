@@ -28,6 +28,7 @@ namespace NetRadio.Metadata {
     [System.Serializable]
     public class Source
     {
+        public string artist;
         public string audio_info;
         public int bitrate;
         public int channels;

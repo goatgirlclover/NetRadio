@@ -51,7 +51,7 @@ namespace NetRadio
             get { return directSoundOut != null ? directSoundOut.PlaybackState == PlaybackState.Playing : false; } 
             set { if (value == true) { Resume(); } else { Stop(); } } 
         }
-        public bool stopped = false;
+        private bool stopped = false;
 
         public int currentStation { get; private set; } = -1;
         public int previousStation { get; private set; } = -1;
@@ -76,6 +76,8 @@ namespace NetRadio
         private long oldPosition = -100;
         private int amountOfTimesFoundAtSamePosition = 0;
         public bool skipDisposal { get; private set; } = false;
+
+        private Dictionary<string, string> knownStatusXSLs = new Dictionary<string, string>();
         
         private void Start() { 
             if (GlobalRadio == this) { 
@@ -259,7 +261,7 @@ namespace NetRadio
                 StartTrackingMetadata();
             }
 
-            stopped = false;
+            //stopped = false;
         }
 
         public void StartTrackingMetadata(bool overrideCancel = false) {
@@ -275,7 +277,7 @@ namespace NetRadio
             }
             
             bool deviceChanged = !stopped; 
-            if (deviceChanged) {
+            if (deviceChanged && !AppNetRadio.playing) {
                 Log.LogWarning("Output device changed?");
                 //var ogSoundOut = directSoundOut;
                 await Task.Delay(500);
@@ -342,7 +344,7 @@ namespace NetRadio
                             Log.LogError($"Null metadata. Cancelling tracking"); 
                             trackingMetadata = false;
                             return;
-                        } else if (currentMetadata != oldMetadata) {
+                        } else if (oldMetadata == null || GetSource(currentMetadata, currentStationURL).title != GetSource(oldMetadata, currentStationURL).title) {
                             decimal savedTime = SaveData.stationSettingsByURL.ContainsKey(urlForCurrent) 
                                     ? SaveData.stationSettingsByURL[urlForCurrent].metadataTimeOffsetSeconds : (decimal)0.0;
                             metadataTimeOffset = (float)savedTime;
@@ -368,7 +370,17 @@ namespace NetRadio
 
         private void HandleMetadata(IcecastStatus originalMetadata) {
             if (!playing) { return; }
-            currentSong = originalMetadata.icestats.source[0].title;
+            string oldSong = currentSong;
+            Source source = GetSource(originalMetadata, currentStationURL);
+            currentSong = source.title;
+            if (!string.IsNullOrWhiteSpace(source.artist)) { 
+                currentSong = source.artist + " - " + source.title;
+                currentSong = currentSong.Trim();
+                if (currentSong.StartsWith("- " + source.title)) { 
+                    currentSong = source.title; 
+                }
+            }
+
             Log.LogInfo("Metadata updated for station " + GetStationTitle() + ": " + currentSong);
             NetRadio.UpdateCurrentSong();
         }
@@ -387,23 +399,28 @@ namespace NetRadio
             bool connected = false;
             string responseString = "";
             string prevStatusURL = "";
+            string statusUrl = "";
             Uri uri = new Uri(url); 
-            do {   
+            do {  
                 string baseUrl = GetParentUriString(uri);
-                if (!baseUrl.EndsWith("/")) { baseUrl = baseUrl + "/"; }
-                string statusUrl = baseUrl + "status-json.xsl";
-                Log.LogInfo("Checking for status-json.xsl: " + statusUrl);
-                if (statusUrl == prevStatusURL) {
-                    Log.LogWarning("Already checked!");
-                    return null; 
-                } 
-
+                if (knownStatusXSLs.ContainsKey(url)) { statusUrl = knownStatusXSLs[url]; }
+                else {
+                    if (!baseUrl.EndsWith("/")) { baseUrl = baseUrl + "/"; }
+                    statusUrl = baseUrl + "status-json.xsl";
+                    Log.LogInfo("Checking for status-json.xsl: " + statusUrl);
+                    if (statusUrl == prevStatusURL) {
+                        Log.LogWarning("Already checked!");
+                        return null; 
+                    } 
+                }
+                
                 try { 
                     var response = await m_httpClient.GetStringAsync(statusUrl);
                     responseString = response.ToString();
                     connected = true;
                 } catch (System.Exception exception) {
                     if (exception is HttpRequestException) {
+                        if (knownStatusXSLs.ContainsKey(url)) { knownStatusXSLs.Remove(url); }
                         if (uri.ToString() == baseUrl || statusUrl == prevStatusURL) { return null; } //fallback
                         else { uri = new Uri(baseUrl); }
                     }
@@ -418,6 +435,7 @@ namespace NetRadio
             
             try {
                 IcecastStatus icecastStatus = JsonConvert.DeserializeObject<IcecastStatus>(responseString);
+                if (!knownStatusXSLs.ContainsKey(url)) { knownStatusXSLs.Add(url, statusUrl); }
                 return icecastStatus; 
             } catch (System.Exception exception) {
                 Log.LogError($"Error getting metadata: {exception.Message}"); 

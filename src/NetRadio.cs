@@ -24,7 +24,7 @@ using CommonAPI;
 using CommonAPI.Phone;
 using CommonAPI.UI;
 using NetRadio.Apps;
-
+using NetRadio.Metadata;
 
 namespace NetRadio
 {
@@ -202,6 +202,19 @@ namespace NetRadio
                 
                 musicApp.m_StatusPanel.OnNewTrack(dummyTrack);
             }
+        }
+
+        public static Source GetSource(IcecastStatus icecastStatus, string url = "") {
+            List<Source> sources = icecastStatus.icestats.source;
+            if (!(sources.Count == 1 || string.IsNullOrWhiteSpace(url))) {
+                try {
+                    string mountPoint = url.Split(["/"], StringSplitOptions.RemoveEmptyEntries).Last().Trim();
+                    foreach (Source source in sources) {
+                        if (source.listenurl.Contains(mountPoint)) { return source; }
+                    }
+                } catch (System.Exception) { } // don't do anything
+            }
+            return sources[0];
         }
     }
 }
