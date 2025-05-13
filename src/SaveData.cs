@@ -34,7 +34,7 @@ namespace NetRadio
             Settings.LoadURLs();
             foreach (string streamURL in Settings.configURLs) {
                 if (!stationSettingsByURL.ContainsKey(StandardizeURL(streamURL))) {
-                    stationSettingsByURL.Add(StandardizeURL(streamURL), new StationSettings());
+                    stationSettingsByURL.Add(StandardizeURL(streamURL), new StationSettings(streamURL));
                 }
             }
         }
@@ -49,7 +49,7 @@ namespace NetRadio
                 for(var i = 0; i < stationCount; i++) {
                     var key = reader.ReadString();
                     var value = reader.ReadDecimal();
-                    StationSettings stationSettings = new StationSettings(); 
+                    StationSettings stationSettings = new StationSettings(key); 
                     stationSettings.volume = value;
                     stationSettingsByURL.Add(key, stationSettings);
                 }
@@ -94,5 +94,25 @@ namespace NetRadio
         public int metadataMode = 1; // 0 = off, 1 = status-json.xsl, 2 = old metaint method (not implemented)
         public decimal metadataTimeOffsetSeconds = (decimal)0.00;
 
+        public StationSettings() { }
+        public StationSettings(string associatedURL) {
+            foreach (string partnerURL in Settings.partneredStations.Keys.ToList()) {
+                if (partnerURL.Contains(associatedURL)) {
+                    StationSettings target = Settings.partneredStations[partnerURL];
+                    volume = target.volume;
+                    metadataMode = target.metadataMode;
+                    metadataTimeOffsetSeconds = target.metadataTimeOffsetSeconds;
+                }
+            }
+
+            foreach (string extraURL in Settings.extraStations.Keys.ToList()) {
+                if (extraURL.Contains(associatedURL)) {
+                    StationSettings target = Settings.extraStations[extraURL];
+                    volume = target.volume;
+                    metadataMode = target.metadataMode;
+                    metadataTimeOffsetSeconds = target.metadataTimeOffsetSeconds;
+                }
+            }
+        }
     }
 }

@@ -31,13 +31,14 @@ namespace NetRadio
         public static List<string> streamTitles = new List<string>{}; 
 
         // appended to start of station list
-        public const string partneredStations = @"
-            (FunkyUncleFM)https://funkyunclefm.net:8443/fufm,
-        ";
+        public static readonly Dictionary<string, StationSettings> partneredStations = new Dictionary<string, StationSettings> {
+            { @"(FunkyUncleFM)https://funkyunclefm.net:8443/fufm,", new StationSettings() { metadataTimeOffsetSeconds = (decimal)7.00 } }
+        };
+        
 
         // appended to end of station list
         // potentially useful for radio expansion mods
-        public static string extraStations = ""; 
+        public static Dictionary<string, StationSettings> extraStations = new Dictionary<string, StationSettings>();
 
         // TEMPORARILY REMOVED // 
         //public static ConfigEntry<bool> moreCodecs; 
@@ -85,7 +86,10 @@ namespace NetRadio
         }
 
         public static void LoadURLs() {
-            string trueStreamURLs = partneredStations + streamURLsUnsplit.Value + extraStations;
+            string partneredStationURLs = string.Concat(partneredStations.Keys.ToArray());
+            string extraStationURLs = string.Concat(extraStations.Keys.ToArray()); 
+            string trueStreamURLs =  partneredStationURLs + streamURLsUnsplit.Value + extraStationURLs;
+
             List<string> stations = SplitStringByCommas(trueStreamURLs).Distinct().ToList();
             List<string> newStreams = new List<string>{}; 
             streamTitles.Clear();
