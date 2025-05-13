@@ -414,8 +414,21 @@ namespace NetRadio
                 }
                 
                 try { 
-                    var response = await m_httpClient.GetStringAsync(statusUrl);
-                    responseString = response.ToString();
+                    var response = await m_httpClient.GetAsync(statusUrl);
+                    if (!response.IsSuccessStatusCode) {
+                        if (response.StatusCode == System.Net.HttpStatusCode.Forbidden) {
+                            Log.LogWarning("403 Forbidden: " + statusUrl);
+                            Log.LogWarning("Force disabling metadata tracking for station...");
+                            string urlForCurrent = NetRadio.StandardizeURL(Settings.configURLs[currentStation]);
+                            if (SaveData.stationSettingsByURL.ContainsKey(urlForCurrent)) {
+                                SaveData.stationSettingsByURL[urlForCurrent].metadataMode = 0; 
+                                SaveData.Instance.Save();
+                            }
+                            return null; 
+                        }
+                        throw new HttpRequestException(); 
+                    }
+                    responseString = await response.Content.ReadAsStringAsync();
                     connected = true;
                 } catch (System.Exception exception) {
                     if (exception is HttpRequestException) {

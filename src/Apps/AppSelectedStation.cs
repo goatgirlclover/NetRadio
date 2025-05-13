@@ -74,10 +74,13 @@ public class AppSelectedStation : NetRadioCustomApp {
         ScrollView = PhoneScrollView.Create(this);
         AddUsualButtons(); 
         var nextButton = AppNetRadio.CreateHeaderButton("Listeners: ", 75f);
+        SetLabelColor(nextButton, Color.clear);
         ScrollView.AddButton(nextButton);
         nextButton = AppNetRadio.CreateHeaderButton("Peak listeners: ", 75f);
+        SetLabelColor(nextButton, Color.clear);
         ScrollView.AddButton(nextButton);
         nextButton = AppNetRadio.CreateHeaderButton("Genre: ", 75f);
+        SetLabelColor(nextButton, Color.clear);
         ScrollView.AddButton(nextButton);
     }   
 
@@ -114,16 +117,16 @@ public class AppSelectedStation : NetRadioCustomApp {
                 button.Label.text = (isStation ? "Disconnect..." : "Connect..."); 
             } else if (button.Label.text.Contains("Volume:")) {
                 button.Label.text = "Volume: " + volumeInPercent + "%"; 
-                SetLabelColor(button, changingVolume ? Color.green : Color.clear);
+                SetLabelColor(button, changingVolume ? Color.green : Color.white);
             } else if (button.Label.text.Contains("Metadata:")) {
                 button.Label.text = "Metadata: " + metadataModeDisplay[currentMetadataMode]; 
-                SetLabelColor(button, changingMetadataMode ? Color.green : Color.clear);
+                SetLabelColor(button, changingMetadataMode ? Color.green : Color.white);
             } else if (button.Label.text.Contains("Metadata offset:")) {
                 button.Label.text = "Metadata offset: +" + metadataOffsetInMS.ToString() + "ms"; 
-                SetLabelColor(button, changingMetadataOffset ? Color.green : Color.clear);
+                SetLabelColor(button, changingMetadataOffset ? Color.green : Color.white);
             } else if (button.Label.text.Contains("clipboard")) {
                 button.Label.text = justFailedCopy ? "Copy to clipboard failed!" : (justCopied ? "Copied to clipboard!" : "Copy URL to clipboard");
-                SetLabelColor(button, justFailedCopy ? Color.red : (justCopied ? Color.green : Color.clear));
+                SetLabelColor(button, justFailedCopy ? Color.red : (justCopied ? Color.green : Color.white));
             }
         }
 
@@ -292,6 +295,19 @@ public class AppSelectedStation : NetRadioCustomApp {
     }
 
     public async Task GetStationMetadata() {
+        foreach (SimplePhoneButton button in ScrollView.Buttons) { if (IsHeaderButton(button)) {
+            if (button.Label.text.Contains("Peak listeners:")) {
+                button.Label.text = "Peak listeners: ";
+                SetLabelColor(button, Color.clear);
+            } else if (button.Label.text.Contains("Listeners:")) {
+                button.Label.text = "Listeners: ";
+                SetLabelColor(button, Color.clear);
+            } else if (button.Label.text.Contains("Genre:")) {
+                button.Label.text = "Genre: ";
+                SetLabelColor(button, Color.clear);
+            }
+        } }
+
         bool cancelTracking = SaveData.stationSettingsByURL.ContainsKey(urlForCurrent) 
                                 ? SaveData.stationSettingsByURL[urlForCurrent].metadataMode == 0 : false;
         if (cancelTracking) { return; }
@@ -300,32 +316,25 @@ public class AppSelectedStation : NetRadioCustomApp {
         IcecastStatus currentInfo = !(GlobalRadio.playing && GlobalRadio.currentStation == currentStationIndex)
                                     ? await GlobalRadio.GetMetadata(GlobalRadio.streamURLs[currentStationIndex])
                                     : GlobalRadio.currentMetadata;
+        if (currentInfo == null) { return; }
         Metadata.Source stationInfo = GetSource(currentInfo, urlForCurrent); 
 
-
-        //ScrollView.RemoveAllButtons();
-        //AddUsualButtons();
         foreach (SimplePhoneButton button in ScrollView.Buttons) { if (IsHeaderButton(button)) {
             if (button.Label.text.Contains("Peak listeners:")) {
                 button.Label.text = "Peak listeners: " + stationInfo.listener_peak;
+                SetLabelColor(button, Color.white);
             } else if (button.Label.text.Contains("Listeners:")) {
                 button.Label.text = "Listeners: " + stationInfo.listeners;
+                SetLabelColor(button, Color.white);
             } else if (button.Label.text.Contains("Genre:")) {
                 button.Label.text = "Genre: " + stationInfo.genre;
+                SetLabelColor(button, Color.white);
             }
         } }
-        /*var nextButton = AppNetRadio.CreateHeaderButton("Listeners: " + stationInfo.listeners, 75f);
-        ScrollView.AddButton(nextButton);
-        nextButton = AppNetRadio.CreateHeaderButton("Peak listeners: " + stationInfo.listener_peak, 75f);
-        ScrollView.AddButton(nextButton);
-        nextButton = AppNetRadio.CreateHeaderButton("Genre: " + stationInfo.genre, 75f);
-        ScrollView.AddButton(nextButton);
-        nextButton = AppNetRadio.CreateHeaderButton("Streaming since " + stationInfo.stream_start);
-        ScrollView.AddButton(nextButton);*/
     }
 
     public void SetLabelColor(SimplePhoneButton nextButton, Color color) {
-        if (color == Color.clear) { // treat as default
+        if (color == Color.white) { // treat as default
             nextButton.Label.faceColor = ScrollView.SelectedIndex == ScrollView.Buttons.IndexOf(nextButton) ? LabelSelectedColorDefault : LabelUnselectedColorDefault;
             nextButton.LabelSelectedColor = LabelSelectedColorDefault;
             nextButton.LabelUnselectedColor = LabelUnselectedColorDefault;

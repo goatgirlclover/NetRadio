@@ -24,11 +24,12 @@ using NetRadio.Metadata;
 
 namespace NetRadio.Apps
 {
+    // Allow us to save overlay so we can delete it later
+    // useful for making headers with playlist/track names
+    // code nearly entirely copy-pasted from CommonAPI github. thanks lazy duchess!
     public class NetRadioCustomApp : CustomApp {
         public UnityEngine.Transform overlayInstance = null; 
-        // Allow us to save overlay so we can delete it later
-        // useful for making headers with playlist/track names
-        // code nearly entirely copy-pasted from CommonAPI github. thanks lazy duchess!
+
         public void CreateAndSaveIconlessTitleBar(string title, float fontSize = 80f) {
             var newOverlay = GameObject.Instantiate(MyPhone.GetAppInstance<Reptile.Phone.AppGraffiti>().transform.Find("Overlay"));
             var icons = newOverlay.transform.Find("Icons");
@@ -71,9 +72,10 @@ namespace NetRadio.Apps
 
             if (!(nextIndex < 0 || nextIndex >= ScrollView.Buttons.Count)) { 
                 if (IsHeaderButton((SimplePhoneButton)ScrollView.Buttons[nextIndex])) {
+                    SilentScrollUp();
                     return;
                 }
-            }
+            } else { return; }
             
             base.OnPressUp();
         } 
@@ -84,11 +86,30 @@ namespace NetRadio.Apps
             
             if (!(nextIndex < 0 || nextIndex >= ScrollView.Buttons.Count)) { 
                 if (IsHeaderButton((SimplePhoneButton)ScrollView.Buttons[nextIndex])) {
+                    SilentScrollDown();
                     return;
                 }
-            }
+            } else { return; }
             
             base.OnPressDown();
         } 
+
+        public void SilentScrollUp() { SilentScroll(-1); }
+        public void SilentScrollDown() { SilentScroll(1); }
+        
+        private void SilentScroll(int direction) {
+            var newIndex = Mathf.Clamp(ScrollView.SelectedIndex + direction, 0, ScrollView.Buttons.Count - 1);
+            if (ScrollView.Buttons.Count <= 0 || newIndex == ScrollView.SelectedIndex) { return; }
+            var currentButton = ScrollView.Buttons[newIndex];
+            var rect = currentButton.RectTransform();
+            var buttonHeight = rect.anchoredPosition.y;
+            var buttonHeightPlusSize = -buttonHeight + (currentButton.Height / 2f) + ScrollView.Separation - ScrollView.CurrentScroll;
+            if (buttonHeightPlusSize < (currentButton.Height / 2f) + ScrollView.Separation) {
+                ScrollView.CancelAnimation();
+                ScrollView.CurrentScroll = -buttonHeight - (currentButton.Height / 2f) - ScrollView.Separation;
+                ScrollView.StartScrollAnimation();
+                PlaySelectSFX();
+            }
+        }
     }
 }
