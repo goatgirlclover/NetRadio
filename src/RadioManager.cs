@@ -261,7 +261,7 @@ namespace NetRadio
                 StartTrackingMetadata();
             }
 
-            //stopped = false;
+            stopped = false;
         }
 
         public void StartTrackingMetadata(bool overrideCancel = false) {
@@ -277,7 +277,7 @@ namespace NetRadio
             }
             
             bool deviceChanged = !stopped; 
-            if (deviceChanged && !AppNetRadio.playing) {
+            if (deviceChanged && !(AppNetRadio.playing || threadRunning)) {
                 Log.LogWarning("Output device changed?");
                 //var ogSoundOut = directSoundOut;
                 await Task.Delay(500);
