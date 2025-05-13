@@ -52,6 +52,19 @@ public class AppSelectedStation : NetRadioCustomApp {
         PhoneAPI.RegisterApp<AppSelectedStation>("selected station"); 
     }
 
+    public static void SetVariables() {
+        string urlForCurrent = NetRadio.StandardizeURL(Settings.configURLs[currentStationIndex]);
+        float volumeMultiplier = SaveData.stationSettingsByURL.ContainsKey(urlForCurrent) 
+                    ? (float)SaveData.stationSettingsByURL[urlForCurrent].volume : 1f;
+        float volumeHund = volumeMultiplier * 100f;
+        volumeInPercent = 5 * (int)Math.Round(volumeHund / 5.0);
+
+        currentMetadataMode = SaveData.stationSettingsByURL.ContainsKey(urlForCurrent) 
+                    ? (int)SaveData.stationSettingsByURL[urlForCurrent].metadataMode : 1;
+        metadataOffsetInMS = SaveData.stationSettingsByURL.ContainsKey(urlForCurrent) 
+                    ? (int)(SaveData.stationSettingsByURL[urlForCurrent].metadataTimeOffsetSeconds*((decimal)1000.0)) : 0;
+    }
+
     public override void OnAppInit()
     {
         base.OnAppInit();
@@ -153,6 +166,7 @@ public class AppSelectedStation : NetRadioCustomApp {
         changingAny = false;
         time = 0.0f;
 
+        SetVariables();
         _= GetStationMetadata(); 
         
         base.OnAppEnable();
@@ -181,6 +195,7 @@ public class AppSelectedStation : NetRadioCustomApp {
         }
 
         if (!changingAny) { base.OnPressUp(); }
+        else { PlaySelectSFX(); }
     } 
 
     public override void OnPressDown() { 
@@ -194,6 +209,7 @@ public class AppSelectedStation : NetRadioCustomApp {
         }
         
         if (!changingAny) { base.OnPressDown(); }
+        else { PlaySelectSFX(); }
     } 
 
     public override void OnHoldUp() {
@@ -207,16 +223,7 @@ public class AppSelectedStation : NetRadioCustomApp {
     }
 
     public void AddUsualButtons() {
-        string urlForCurrent = NetRadio.StandardizeURL(Settings.configURLs[currentStationIndex]);
-        float volumeMultiplier = SaveData.stationSettingsByURL.ContainsKey(urlForCurrent) 
-                    ? (float)SaveData.stationSettingsByURL[urlForCurrent].volume : 1f;
-        float volumeHund = volumeMultiplier * 100f;
-        volumeInPercent = 5 * (int)Math.Round(volumeHund / 5.0);
-
-        currentMetadataMode = SaveData.stationSettingsByURL.ContainsKey(urlForCurrent) 
-                    ? (int)SaveData.stationSettingsByURL[urlForCurrent].metadataMode : 1;
-        metadataOffsetInMS = SaveData.stationSettingsByURL.ContainsKey(urlForCurrent) 
-                    ? (int)(SaveData.stationSettingsByURL[urlForCurrent].metadataTimeOffsetSeconds*((decimal)1000.0)) : 0;
+        SetVariables();
 
         ScrollView.RemoveAllButtons();
 
@@ -331,6 +338,8 @@ public class AppSelectedStation : NetRadioCustomApp {
     }
 
     private void UpdateGlobalRadioMetaMode() {
+        bool isStation = GlobalRadio.playing && GlobalRadio.currentStation == currentStationIndex;
+        if (!isStation) { return; }
         GlobalRadio.ResetMetadata();
         if (currentMetadataMode == 0) { GlobalRadio.StopTrackingMetadata(false); }
         else if (!GlobalRadio.trackingMetadata) { 
