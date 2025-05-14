@@ -423,9 +423,12 @@ public class AppNetRadio : NetRadioCustomApp
     }
 
     public static void PlaySFXFromPack(string sfxName, string sfxPack = "default", bool startedByPlayNoise = false) {
+        sfxPack = sfxPack.ToLower(); 
+        sfxName = sfxName.ToLower(); 
         waveOut.Stop();
         if (sfxName == "tuning" && !startedByPlayNoise) { PlayNoise(); return; }
         try {
+            if (!HasSFX(sfxName, sfxPack)) { throw new ArgumentException("Sound effect does not exist"); }
             if (lastFfmpeg != null) { lastFfmpeg.Dispose(); }
             FfmpegDecoder sfxDecoder = new FfmpegDecoder(Path.Combine(dataDirectory, "sfx/", (sfxPack + "/"), (sfxName + ".mp3")));
             lastFfmpeg = sfxDecoder;
@@ -436,11 +439,19 @@ public class AppNetRadio : NetRadioCustomApp
             waveOut.Initialize(new SampleToIeeeFloat32(sfxReader));
             waveOut.Play();
         } catch (System.Exception ex) {
-            Log.LogError("Error playing app SFX (" + sfxName + " from pack " + sfxPack + "): " + ex.Message);
-            Log.LogError(ex.StackTrace); 
-            if (sfxPack != "default") { PlaySFXFromPack(sfxName, "default", startedByPlayNoise); }
+            if (sfxPack != "default") { 
+                Log.LogWarning("Error playing app SFX (" + sfxName + " from pack " + sfxPack + "): " + ex.Message);
+                PlaySFXFromPack(sfxName, "default", startedByPlayNoise); 
+            } else {
+                Log.LogError("Error playing app SFX (" + sfxName + " from pack " + sfxPack + "): " + ex.Message);
+                Log.LogError(ex.StackTrace); 
+            }
         }
-        
+    }
+
+    public static bool HasSFX(string sfxName, string sfxPack = "default") {
+        string pathToSound = Path.Combine(dataDirectory, "sfx/", (sfxPack + "/"), (sfxName + ".mp3"));
+        return File.Exists(pathToSound); 
     }
 
     public static SimplePhoneButton CreateSimpleButton(string label) {
