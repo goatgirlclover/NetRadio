@@ -453,7 +453,16 @@ public class AppNetRadio : NetRadioCustomApp
     }
 
     public static bool HasSFX(string sfxName, string sfxPack, out string[] files) {
-        files = Directory.EnumerateFiles(Path.Combine(dataDirectory, "sfx/", (sfxPack + "/")), sfxName + ".*").ToArray();
+        List<string> files_plugindir = new List<string>(); 
+        List<string> files_customdir = new List<string>();
+        
+        if (Directory.Exists(Path.Combine(customSFXpath, (sfxPack + "/")))) {
+           files_customdir = Directory.EnumerateFiles(Path.Combine(customSFXpath, (sfxPack + "/")), sfxName + ".*").ToList();
+        } else if (Directory.Exists(Path.Combine(dataDirectory, "sfx/", (sfxPack + "/")))) {
+            files_plugindir = Directory.EnumerateFiles(Path.Combine(dataDirectory, "sfx/", (sfxPack + "/")), sfxName + ".*").ToList();
+        }
+        
+        files = files_plugindir.Union(files_customdir).ToArray();
         return files.Any(); 
     }
 

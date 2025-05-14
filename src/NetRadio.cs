@@ -58,6 +58,8 @@ namespace NetRadio
 
         public static List<string> hasRedir = new List<string>{};
 
+        public static string customSFXpath { get { return Path.Combine(BepInEx.Paths.ConfigPath, PluginName, "CustomSFXPacks"); } }
+
         public static void Update() {
             if (NetRadio.GlobalRadio is NetRadioManager) {
                 if (NetRadio.GlobalRadio.playing) {

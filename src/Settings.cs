@@ -143,10 +143,18 @@ namespace NetRadio
         }
 
         public static AcceptableValueList<string> GetSFXFolders() {
+            if (!Directory.Exists(NetRadio.customSFXpath)) { 
+                NetRadio.Log.LogInfo("Creating custom SFX folder: " + NetRadio.customSFXpath);
+                Directory.CreateDirectory(NetRadio.customSFXpath); 
+            }
+
             List<string> sfxFolders = new List<string>(["Default", "Legacy", "Dial-up", "Skype", "Discord", "Wii", "3DS"]); 
             try {
-                foreach (string directory in Directory.GetDirectories(Path.Combine(AppNetRadio.dataDirectory, "sfx/"))) {
-                    string trimmedDirectory = directory.Split(["/"], StringSplitOptions.RemoveEmptyEntries).Last().Trim();                 
+                string[] files_plugindir = Directory.GetDirectories(Path.Combine(AppNetRadio.dataDirectory, "sfx/")).ToArray();
+                string[] files_customdir = Directory.GetDirectories(NetRadio.customSFXpath).ToArray();
+                string[] combinedDirectories = files_plugindir.Union(files_customdir).ToArray();
+                foreach (string directory in combinedDirectories) {
+                    string trimmedDirectory = directory.Split(["/", @"\"], StringSplitOptions.RemoveEmptyEntries).Last().Trim();                 
                     bool unique = true; 
                     foreach (string already in sfxFolders) {
                         if (already.ToLower() == trimmedDirectory.ToLower()) { unique = false; }
