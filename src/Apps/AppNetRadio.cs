@@ -428,11 +428,14 @@ public class AppNetRadio : NetRadioCustomApp
         waveOut.Stop();
         if (sfxName == "tuning" && !startedByPlayNoise) { PlayNoise(); return; }
         try {
-            if (!HasSFX(sfxName, sfxPack)) { throw new ArgumentException("Sound effect does not exist"); }
+            if (!HasSFX(sfxName, sfxPack, out string[] files)) { throw new ArgumentException("Sound effect does not exist"); }
             if (lastFfmpeg != null) { lastFfmpeg.Dispose(); }
-            FfmpegDecoder sfxDecoder = new FfmpegDecoder(Path.Combine(dataDirectory, "sfx/", (sfxPack + "/"), (sfxName + ".mp3")));
+            string filePath = files[0];
+
+            FfmpegDecoder sfxDecoder = new FfmpegDecoder(filePath);
             lastFfmpeg = sfxDecoder;
             sfxDecoder.Position = 0;
+
             VolumeSource sfxReader = new VolumeSource(WaveToSampleBase.CreateConverter(sfxDecoder)); 
             if (sfxName == "tuning") { tuningSource = sfxReader; }
             sfxReader.Volume = radioMusicVolume;
@@ -449,9 +452,13 @@ public class AppNetRadio : NetRadioCustomApp
         }
     }
 
+    public static bool HasSFX(string sfxName, string sfxPack, out string[] files) {
+        files = Directory.EnumerateFiles(Path.Combine(dataDirectory, "sfx/", (sfxPack + "/")), sfxName + ".*").ToArray();
+        return files.Any(); 
+    }
+
     public static bool HasSFX(string sfxName, string sfxPack = "default") {
-        string pathToSound = Path.Combine(dataDirectory, "sfx/", (sfxPack + "/"), (sfxName + ".mp3"));
-        return File.Exists(pathToSound); 
+        return HasSFX(sfxName, sfxPack, out _);
     }
 
     public static SimplePhoneButton CreateSimpleButton(string label) {
