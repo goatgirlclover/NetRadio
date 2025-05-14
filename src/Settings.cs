@@ -23,9 +23,6 @@ namespace NetRadio
         public static ConfigEntry<bool> restartMusic; 
 
         public static ConfigEntry<string> sfxPack;
-        /*public static AcceptableValueList<string> sfxPacks = new AcceptableValueList<string>(
-            ["Default", "Legacy", "Dial-up", "Skype", "Discord", "Wii", "3DS"]
-        ); */
 
         public static List<KeyCode> keybindsReload;
         public static List<string> streamTitles = new List<string>{}; 
@@ -66,9 +63,7 @@ namespace NetRadio
             configureRequireConnection = Config.Bind("Settings", "Configuring Stations Requires Connection", false, "Whether it is possible to change a station's settings within the NetRadio app without connecting to the station.");
             restartMusic = Config.Bind("Settings", "Restart Interrupted Music", true, "Whether to either restart the in-game music or reconnect to a previous station when disconnecting from (or failing to connect to) a radio station.");
             
-            sfxPack = Config.Bind("Settings", "App SFX Pack", "Default", @"The sound effect pack to use within the NetRadio app. Affects sound effects for tuning into a station, connecting, disconnecting, failing to connect, and losing connection mid-stream. Custom SFX packs placed in /RadioApp-res/sfx are also supported.
-                Included SFX packs: Default, Legacy, Dial-up, Skype, Discord, Wii, 3DS"); 
-                //new ConfigDescription("The sound effect pack to use within the NetRadio app. Affects sound effects for tuning into a station, connecting, disconnecting, failing to connect, and losing connection mid-stream.", sfxPacks));
+            sfxPack = Config.Bind("Settings", "App SFX Pack", "Default", new ConfigDescription(@"The sound effect pack to use within the NetRadio app. Affects sound effects for tuning into a station, connecting, disconnecting, failing to connect, and losing connection mid-stream. Custom SFX packs placed in /RadioApp-res/sfx are also supported.", GetSFXFolders())); 
             
             keybindsReloadUnsplit = Config.Bind("Settings", "Reload Radios Keybinds", "F11", "Press to reload all in-game radio streams.");
             keybindsReloadUnsplit.SettingChanged += UpdateSettingsEvent;
@@ -145,6 +140,30 @@ namespace NetRadio
                 returnList.Add(StringToKeyCode(keycodeAsString)); 
             }
             return returnList;
+        }
+
+        public static AcceptableValueList<string> GetSFXFolders() {
+            List<string> sfxFolders = new List<string>(["Default", "Legacy", "Dial-up", "Skype", "Discord", "Wii", "3DS"]); 
+            try {
+                foreach (string directory in Directory.GetDirectories(Path.Combine(AppNetRadio.dataDirectory, "sfx/"))) {
+                    string trimmedDirectory = directory.Split(["/"], StringSplitOptions.RemoveEmptyEntries).Last().Trim();                 
+                    bool unique = true; 
+                    foreach (string already in sfxFolders) {
+                        if (already.ToLower() == trimmedDirectory.ToLower()) { unique = false; }
+                    }
+
+                    if (unique) {
+                        if (trimmedDirectory == trimmedDirectory.ToLower()) {
+                            System.Globalization.TextInfo textInfo = new System.Globalization.CultureInfo("en-US", false).TextInfo;
+                            trimmedDirectory = textInfo.ToTitleCase(trimmedDirectory); 
+                        }
+                        sfxFolders.Add(trimmedDirectory);
+                    }
+                }
+                return new AcceptableValueList<string>(sfxFolders.ToArray());
+            } catch (System.Exception ex) {
+                return new AcceptableValueList<string>(sfxFolders.ToArray());
+            }
         }
     }
 }
