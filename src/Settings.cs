@@ -161,7 +161,7 @@ namespace NetRadio
                     }
                 }
                 return new AcceptableValueList<string>(sfxFolders.ToArray());
-            } catch (System.Exception ex) {
+            } catch (System.Exception) {
                 return new AcceptableValueList<string>(sfxFolders.ToArray());
             }
         }
