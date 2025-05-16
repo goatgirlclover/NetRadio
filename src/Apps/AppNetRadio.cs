@@ -436,7 +436,10 @@ public class AppNetRadio : NetRadioCustomApp
             lastFfmpeg = sfxDecoder;
             sfxDecoder.Position = 0;
 
-            VolumeSource sfxReader = new VolumeSource(WaveToSampleBase.CreateConverter(sfxDecoder)); 
+            int bufferInt = (int)Mathf.Round((float)sfxDecoder.WaveFormat.BytesPerSecond * 0.25f);
+            var buffer = new BufferSource(sfxDecoder, bufferInt);
+
+            VolumeSource sfxReader = new VolumeSource(WaveToSampleBase.CreateConverter(buffer)); 
             if (sfxName == "tuning") { tuningSource = sfxReader; }
             sfxReader.Volume = radioMusicVolume;
             waveOut.Initialize(new SampleToIeeeFloat32(sfxReader));
