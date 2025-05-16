@@ -90,14 +90,10 @@ namespace NetRadio
         void FixedUpdate() {
             if (directSoundOut != null && ffmpegReader != null) {
                 if (playing) {
-                    if ((ffmpegReader.Position + 150 >= ffmpegReader.Length && ffmpegReader.Length != 0 && ffmpegReader.CanSeek)) {
-                        StopRadio();
-                        AppNetRadio.PlaySFX("lost");
-                    }
-                    
-                    if (ffmpegReader.Position == oldPosition && ffmpegReader.Position > 300000) { 
-                        amountOfTimesFoundAtSamePosition++;
-                        if (amountOfTimesFoundAtSamePosition > (int)Mathf.Round(NetRadio.bufferTimeInSeconds*30.0f)) { 
+                    if (ffmpegReader.Position <= oldPosition) { 
+                        int limit = (int)Mathf.Round(NetRadio.bufferTimeInSeconds*20.0f); 
+                        amountOfTimesFoundAtSamePosition += ffmpegReader.Position < oldPosition ? (int)limit/2 : 1; 
+                        if (amountOfTimesFoundAtSamePosition > limit) { 
                             StopRadio(); 
                             AppNetRadio.PlaySFX("lost");
                             amountOfTimesFoundAtSamePosition = 0;
@@ -220,7 +216,6 @@ namespace NetRadio
 
             try {
                 if (!skipDisposal) { DisposeOfReaders(); }
-                skipDisposal = false;
                 m_httpClient = CreateHTTPClient();
 
                 float realtimeAtStart = Time.realtimeSinceStartup;
@@ -244,6 +239,7 @@ namespace NetRadio
                 directSoundOut.Play();
 
                 connectionTime = Time.realtimeSinceStartup - realtimeAtStart;
+                skipDisposal = false;
             } 
             catch (System.Exception exception) { 
                 if (currentStationURL.StartsWith("http://")) {
