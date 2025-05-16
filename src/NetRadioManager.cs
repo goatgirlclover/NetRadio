@@ -74,6 +74,7 @@ namespace NetRadio
         public bool trackingMetadata { get; private set; } = false;
 
         private long oldPosition = -100;
+        private bool startTrackingPosition = false;
         private int amountOfTimesFoundAtSamePosition = 0;
         public bool skipDisposal { get; private set; } = false;
 
@@ -90,17 +91,23 @@ namespace NetRadio
         void FixedUpdate() {
             if (directSoundOut != null && ffmpegReader != null) {
                 if (playing) {
-                    if (ffmpegReader.Position <= oldPosition) { 
-                        int limit = (int)Mathf.Round(NetRadio.bufferTimeInSeconds*20.0f); 
-                        amountOfTimesFoundAtSamePosition += ffmpegReader.Position < oldPosition ? (int)limit/2 : 1; 
+                    if (ffmpegReader.Position <= oldPosition && startTrackingPosition) { 
+                        int limit = (int)Mathf.Round(NetRadio.bufferTimeInSeconds*30.0f); 
+                        amountOfTimesFoundAtSamePosition += 1; 
                         if (amountOfTimesFoundAtSamePosition > limit) { 
                             StopRadio(); 
                             AppNetRadio.PlaySFX("lost");
                             amountOfTimesFoundAtSamePosition = 0;
                             skipDisposal = true;
                         }
-                    } else { amountOfTimesFoundAtSamePosition = 0; }
+                    } else { 
+                        amountOfTimesFoundAtSamePosition = 0; 
+                        if (ffmpegReader.Position > 10000) { startTrackingPosition = true; }
+                    }
                     oldPosition = ffmpegReader.Position;
+                } else { 
+                    startTrackingPosition = false; 
+                    oldPosition = 0; 
                 }
             }
         }
