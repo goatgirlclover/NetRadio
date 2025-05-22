@@ -35,11 +35,12 @@ internal class ReloadMainMenu {
 internal class StartupPatch {
     [HarmonyPostfix]
     [HarmonyPatch(typeof(BaseModule), "StartGameFromSaveSlot")]
+    [HarmonyPatch(typeof(BaseModule), "StartGameFromCurrentSaveSlotToStage")]
     public static void StartupRadio() {
         if (NetRadio.gameStarted) { return; }
         NetRadio.gameStarted = true;
 
-        if (Settings.playOnStartup.Value) {
+        if (Settings.playOnStartup.Value && !NetRadio.GlobalRadio.playing) {
             _= NetRadio.MuteUntilRadioPlaying();
             if (Settings.startupIndex.Value == -1) { NetRadio.GlobalRadio.PlayRandomStation(); }
             else { NetRadio.GlobalRadio.PlayRadioStation(Settings.startupIndex.Value); }
