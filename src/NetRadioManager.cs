@@ -385,6 +385,9 @@ namespace NetRadio
 
             Log.LogInfo("Metadata updated for station " + GetStationTitle() + ": " + currentSong);
             NetRadio.UpdateCurrentSong();
+            if (PlayerUsingApp(typeof(AppSelectedStation)) && AppSelectedStation.isStation) {
+                AppSelectedStation.Instance.UpdateStationMetadata(source);
+            }
         }
 
         private System.Net.Http.HttpClient CreateHTTPClient() { 

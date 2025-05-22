@@ -108,11 +108,11 @@ public class AppSelectedStation : NetRadioCustomApp {
 
         foreach (SimplePhoneButton button in ScrollView.Buttons) {
             if (IsHeaderButton(button)) {
-                if (ScrollView.Buttons.IndexOf(button) == 0) { 
-                    AppNetRadio.UpdateNowPlayingButton(button, ScrollView); 
-                } else { AppNetRadio.UpdateDynamicButtonHeight(button, ScrollView); }
+                //if (ScrollView.Buttons.IndexOf(button) == 0) { 
+                //    AppNetRadio.UpdateNowPlayingButton(button, ScrollView); 
+                //} else { AppNetRadio.UpdateDynamicButtonHeight(button, ScrollView); }
+                AppNetRadio.UpdateDynamicButtonHeight(button, ScrollView);
                 button.PlayDeselectAnimation(true);
-                //Log.LogInfo(button.Height);
             } else if (button.Label.text.EndsWith("nnect...")) {
                 button.Label.text = (isStation ? "Disconnect..." : "Connect..."); 
             } else if (button.Label.text.Contains("Volume:")) {
@@ -231,9 +231,9 @@ public class AppSelectedStation : NetRadioCustomApp {
 
         ScrollView.RemoveAllButtons();
 
-        var blankButton = AppNetRadio.CreateHeaderButton(AppNetRadio.currentNowPlayingText, AppNetRadio.currentNowPlayingHeight); 
+        /*var blankButton = AppNetRadio.CreateHeaderButton(AppNetRadio.currentNowPlayingText, AppNetRadio.currentNowPlayingHeight); 
         ScrollView.AddButton(blankButton);
-        AppNetRadio.UpdateNowPlayingButton(blankButton, ScrollView, false);
+        AppNetRadio.UpdateNowPlayingButton(blankButton, ScrollView, false);*/
 
         var firstButton = PhoneUIUtility.CreateSimpleButton(isStation ? "Disconnect..." : "Connect...");
             firstButton.OnConfirm += () => {
@@ -317,8 +317,12 @@ public class AppSelectedStation : NetRadioCustomApp {
                                     ? await GlobalRadio.GetMetadata(GlobalRadio.streamURLs[currentStationIndex])
                                     : GlobalRadio.currentMetadata;
         if (currentInfo == null) { return; }
-        Metadata.Source stationInfo = GetSource(currentInfo, urlForCurrent); 
+        Metadata.Source stationInfo = GetSource(currentInfo, urlForCurrent);
 
+        UpdateStationMetadata(stationInfo);
+    }
+
+    public void UpdateStationMetadata(Metadata.Source stationInfo) {
         foreach (SimplePhoneButton button in ScrollView.Buttons) { if (IsHeaderButton(button)) {
             if (button.Label.text.Contains("Peak listeners:")) {
                 button.Label.text = "Peak listeners: " + stationInfo.listener_peak;
