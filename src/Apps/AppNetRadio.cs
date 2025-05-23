@@ -37,7 +37,7 @@ public class AppNetRadio : NetRadioCustomApp
     private static VolumeSource tuningSource;
     private static FfmpegDecoder lastFfmpeg; 
     private static BufferSource lastBuffer;
-    public static WaveOut waveOut;
+    public static DirectSoundOut waveOut;
 
     public static Sprite SelectedButtonSprite;
     public static Sprite UnselectedButtonSprite;
@@ -94,7 +94,7 @@ public class AppNetRadio : NetRadioCustomApp
         IconSprite = LoadSprite(Path.Combine(dataDirectory, "icon.png")); 
         PhoneAPI.RegisterApp<AppNetRadio>(appName, IconSprite); 
 
-        waveOut = new WaveOut(NetRadio.waveOutLatency);
+        waveOut = new DirectSoundOut(NetRadio.waveOutLatency);
 
         SelectedButtonSprite = LoadSprite(Path.Combine(dataDirectory, "SimpleButton-Selected.png"));
         UnselectedButtonSprite = LoadSprite(Path.Combine(dataDirectory, "SimpleButton.png"));
