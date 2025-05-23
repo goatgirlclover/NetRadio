@@ -16,7 +16,6 @@
     <PackageReference Include="UnityEngine.Modules" Version="2021.3.27" IncludeAssets="compile" />
     <PackageReference Include="System.Net.Http" Version="4.3.4" />
     <PackageReference Include="CSCore" Version="1.2.1.2" />
-    <PackageReference Include="CSCore.Ffmpeg" Version="1.2.0-beta1" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
   
@@ -31,5 +30,6 @@
   <Reference Include="Unity.TextMeshPro.dll"><HintPath>lib\Unity.TextMeshPro.dll</HintPath></Reference>
   <Reference Include="UnityEngine.UI.dll"><HintPath>lib\UnityEngine.UI.dll</HintPath></Reference>
   <Reference Include="CommonAPI.dll"><HintPath>lib\CommonAPI.dll</HintPath></Reference>
+  <Reference Include="CSCore.Ffmpeg.dll"><HintPath>lib\CSCore.Ffmpeg.dll</HintPath></Reference>
   </ItemGroup>
 </Project>
