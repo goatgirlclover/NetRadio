@@ -62,7 +62,7 @@ public class AppSelectedStation : NetRadioCustomApp {
         MetadataIcons.Add(LoadSprite(Path.Combine(AppNetRadio.dataDirectory, "Metadata-Location.png")));
     }
 
-    public static void SetVariables() {
+    public void SetVariables() {
         float volumeMultiplier = SaveData.stationSettingsByURL.ContainsKey(urlForCurrent) 
                     ? (float)SaveData.stationSettingsByURL[urlForCurrent].volume : 1f;
         float volumeHund = volumeMultiplier * 100f;
@@ -72,6 +72,8 @@ public class AppSelectedStation : NetRadioCustomApp {
                     ? (int)SaveData.stationSettingsByURL[urlForCurrent].metadataMode : 1;
         metadataOffsetInMS = SaveData.stationSettingsByURL.ContainsKey(urlForCurrent) 
                     ? (int)(SaveData.stationSettingsByURL[urlForCurrent].metadataTimeOffsetSeconds*((decimal)1000.0)) : 0;
+
+        (ScrollView.Buttons[0] as SimplePhoneButton).Label.gameObject.transform.localPosition = new Vector3(-475f, 0f, 0f);
     }
 
     public override void OnAppInit()
@@ -79,10 +81,17 @@ public class AppSelectedStation : NetRadioCustomApp {
         base.OnAppInit();
         Instance = this;
         ScrollView = PhoneScrollView.Create(this);
+
+        var blankButton = AppNetRadio.CreateHeaderButton(AppNetRadio.currentNowPlayingText, 70f, 10000.0f); 
+        ScrollView.AddButton(blankButton);
+        AppNetRadio.UpdateNowPlayingButton(blankButton, ScrollView, false);
+
         ScrollView.AddButton(CreateMetadataStack());
+        
         var nextButton = AppNetRadio.CreateHeaderButton("Genre: ", 75f);
         SetLabelColor(nextButton, Color.clear);
         ScrollView.AddButton(nextButton);
+
         AddUsualButtons(); 
     }   
 
@@ -110,10 +119,9 @@ public class AppSelectedStation : NetRadioCustomApp {
 
         foreach (SimplePhoneButton button in ScrollView.Buttons) {
             if (IsHeaderButton(button)) {
-                //if (ScrollView.Buttons.IndexOf(button) == 0) { 
-                //    AppNetRadio.UpdateNowPlayingButton(button, ScrollView); 
-                //} else { AppNetRadio.UpdateDynamicButtonHeight(button, ScrollView); }
-                if (ScrollView.Buttons.IndexOf(button) != 0) { AppNetRadio.UpdateDynamicButtonHeight(button, ScrollView); }
+                if (ScrollView.Buttons.IndexOf(button) == 0) { 
+                    AppNetRadio.UpdateNowPlayingButton(button, ScrollView); }
+                if (ScrollView.Buttons.IndexOf(button) > 1) { AppNetRadio.UpdateDynamicButtonHeight(button, ScrollView); }
                 button.PlayDeselectAnimation(true);
             } else if (button.Label.text.EndsWith("nnect...")) {
                 button.Label.text = (isStation ? "Disconnect..." : "Connect..."); 
@@ -230,10 +238,6 @@ public class AppSelectedStation : NetRadioCustomApp {
 
     public void AddUsualButtons() {
         SetVariables();
-
-        /*var blankButton = AppNetRadio.CreateHeaderButton(AppNetRadio.currentNowPlayingText, AppNetRadio.currentNowPlayingHeight); 
-        ScrollView.AddButton(blankButton);
-        AppNetRadio.UpdateNowPlayingButton(blankButton, ScrollView, false);*/
 
         var firstButton = PhoneUIUtility.CreateSimpleButton(isStation ? "Disconnect..." : "Connect...");
             firstButton.OnConfirm += () => {
@@ -397,6 +401,6 @@ public class AppSelectedStation : NetRadioCustomApp {
     }
 
     public SimplePhoneButton GetMetadataStack() {
-        return ScrollView.Buttons[0] as SimplePhoneButton; 
+        return ScrollView.Buttons[1] as SimplePhoneButton; 
     }
 }

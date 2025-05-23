@@ -483,7 +483,7 @@ public class AppNetRadio : NetRadioCustomApp
         return PhoneUIUtility.CreateSimpleButton(label); 
     }
 
-    public static SimplePhoneButton CreateHeaderButton(string label, float height = 100f) {
+    public static SimplePhoneButton CreateHeaderButton(string label, float height = 100f, float width = 850f) {
         runPrefix = false;
         var button = PhoneUIUtility.CreateSimpleButton(label);
         var titleLabel = button.Label;
@@ -491,6 +491,7 @@ public class AppNetRadio : NetRadioCustomApp
         headerSig.transform.SetParent(titleLabel.gameObject.transform, false);
         button.ButtonImage.gameObject.RectTransform().sizeDelta = new Vector2(530f * 2f, height);
         titleLabel.transform.localPosition += new Vector3 (-70f, 0f, 0f);
+        button.Label.gameObject.RectTransform().sizeDelta = new Vector2(width, 100f);
         runPrefix = true;
         return button;
     }
@@ -508,8 +509,18 @@ public class AppNetRadio : NetRadioCustomApp
         }
 
         currentNowPlayingText = button.Label.text;
-        UpdateDynamicButtonHeight(button, scrollView, skipCheck);
-        if (button.ButtonImage.gameObject.RectTransform().sizeDelta.y > 0) { currentNowPlayingHeight = button.Height; }
+        
+        if (button.Label.gameObject.RectTransform().sizeDelta.x == 10000.0f) {
+            button.Label.gameObject.transform.localPosition -= new Vector3(Core.dt*60f*2.5f, 0f, 0f);
+            button.Label.alignment = TextAlignmentOptions.Left;
+            button.Label.text = "                                            " + button.Label.text;
+            if (button.Label.gameObject.transform.localPosition.x <= -475f - button.Label.textBounds.size.x - 1200f) {
+                button.Label.gameObject.transform.localPosition = new Vector3(-475f, 0f, 0f);
+            }
+        } else {
+            UpdateDynamicButtonHeight(button, scrollView, skipCheck);
+            if (button.ButtonImage.gameObject.RectTransform().sizeDelta.y > 0) { currentNowPlayingHeight = button.Height; }
+        }
     }
 
     public static void UpdateDynamicButtonHeight(SimplePhoneButton button, PhoneScrollView scrollView, bool skipCheck = false) {
