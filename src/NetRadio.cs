@@ -82,9 +82,9 @@ namespace NetRadio
                 }
             }
 
-            if (NetRadio.pressedAnyButtonIn(Settings.keybindsReload)) {
-                NetRadioManager.ReloadAllStations();
-            }
+            //if (NetRadio.pressedAnyButtonIn(Settings.keybindsReload)) {
+            //    NetRadioManager.ReloadAllStations();
+            //}
         }
 
         public static bool PlayerUsingMusicApp() { return PlayerUsingApp(typeof(AppMusicPlayer)); }

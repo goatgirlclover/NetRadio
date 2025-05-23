@@ -18,13 +18,11 @@ namespace NetRadio
         public static ConfigEntry<bool> configureRequireConnection;
 
         public static ConfigEntry<float> extraBufferSec;
-        public static ConfigEntry<string> keybindsReloadUnsplit;
         public static ConfigEntry<bool> noThreads;
         public static ConfigEntry<bool> restartMusic; 
 
         public static ConfigEntry<string> sfxPack;
 
-        public static List<KeyCode> keybindsReload;
         public static List<string> streamTitles = new List<string>{}; 
 
         // appended to start of station list
@@ -64,10 +62,6 @@ namespace NetRadio
             restartMusic = Config.Bind("Settings", "Restart Interrupted Music", true, "Whether to either restart the in-game music or reconnect to a previous station when disconnecting from (or failing to connect to) a radio station.");
             
             sfxPack = Config.Bind("Settings", "App SFX Pack", "Default", new ConfigDescription(@"The sound effect pack to use within the NetRadio app. Affects sound effects for tuning into a station, connecting, disconnecting, failing to connect, and losing connection mid-stream. Custom SFX packs placed in /RadioApp-res/sfx are also supported.", GetSFXFolders())); 
-            
-            keybindsReloadUnsplit = Config.Bind("Settings", "Reload Radios Keybinds", "F11", "Press to reload all in-game radio streams.");
-            keybindsReloadUnsplit.SettingChanged += UpdateSettingsEvent;
-
             noThreads = Config.Bind("Settings", "Disable Multithreading", false, "EXPERIMENTAL! Prevent multithreading for radio streaming, causing the game to freeze when starting a radio. Not recommended.");
             //moreCodecs = Config.Bind("Settings", "Enable Media Foundation Codecs", false, "EXPERIMENTAL! Windows only. Allow the use of Windows Media Foundation codecs instead of FFmpeg. Note that if the Media Foundation player fails, the mod will fallback to FFmpeg.");
 
@@ -115,7 +109,6 @@ namespace NetRadio
 
             NetRadio.GlobalRadio.streamURLs = newStreams;
             configURLs = newStreams;
-            keybindsReload = KeyCodeListFromList(SplitStringByCommas(keybindsReloadUnsplit.Value));
 
             AppNetRadio.originalURLLabelText.Clear();
             AppNetRadio.urlWrapOffsets.Clear();
