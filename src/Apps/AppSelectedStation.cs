@@ -51,8 +51,15 @@ public class AppSelectedStation : NetRadioCustomApp {
     public static string urlForCurrent { get { return NetRadio.StandardizeURL(Settings.configURLs[currentStationIndex]); } }
     public static bool isStation { get { return GlobalRadio.playing && GlobalRadio.currentStation == currentStationIndex; } }
 
+    public static List<Sprite> MetadataIcons = new List<Sprite>{}; // listeners (person icon), peak (graph), location (globe)
+
     public static void Initialize() { 
         PhoneAPI.RegisterApp<AppSelectedStation>("selected station"); 
+
+        MetadataIcons.Clear();
+        MetadataIcons.Add(LoadSprite(Path.Combine(AppNetRadio.dataDirectory, "Metadata-Listeners.png")));
+        MetadataIcons.Add(LoadSprite(Path.Combine(AppNetRadio.dataDirectory, "Metadata-Peak.png")));
+        MetadataIcons.Add(LoadSprite(Path.Combine(AppNetRadio.dataDirectory, "Metadata-Location.png")));
     }
 
     public static void SetVariables() {
@@ -72,16 +79,11 @@ public class AppSelectedStation : NetRadioCustomApp {
         base.OnAppInit();
         Instance = this;
         ScrollView = PhoneScrollView.Create(this);
+        ScrollView.AddButton(CreateMetadataStack());
+        var nextButton = AppNetRadio.CreateHeaderButton("Genre: ", 75f);
+        SetLabelColor(nextButton, Color.clear);
+        ScrollView.AddButton(nextButton);
         AddUsualButtons(); 
-        var nextButton = AppNetRadio.CreateHeaderButton("Listeners: ", 75f);
-        SetLabelColor(nextButton, Color.clear);
-        ScrollView.AddButton(nextButton);
-        nextButton = AppNetRadio.CreateHeaderButton("Peak listeners: ", 75f);
-        SetLabelColor(nextButton, Color.clear);
-        ScrollView.AddButton(nextButton);
-        nextButton = AppNetRadio.CreateHeaderButton("Genre: ", 75f);
-        SetLabelColor(nextButton, Color.clear);
-        ScrollView.AddButton(nextButton);
     }   
 
     public override void OnAppUpdate() {
@@ -111,7 +113,7 @@ public class AppSelectedStation : NetRadioCustomApp {
                 //if (ScrollView.Buttons.IndexOf(button) == 0) { 
                 //    AppNetRadio.UpdateNowPlayingButton(button, ScrollView); 
                 //} else { AppNetRadio.UpdateDynamicButtonHeight(button, ScrollView); }
-                AppNetRadio.UpdateDynamicButtonHeight(button, ScrollView);
+                if (ScrollView.Buttons.IndexOf(button) != 0) { AppNetRadio.UpdateDynamicButtonHeight(button, ScrollView); }
                 button.PlayDeselectAnimation(true);
             } else if (button.Label.text.EndsWith("nnect...")) {
                 button.Label.text = (isStation ? "Disconnect..." : "Connect..."); 
@@ -229,8 +231,6 @@ public class AppSelectedStation : NetRadioCustomApp {
     public void AddUsualButtons() {
         SetVariables();
 
-        ScrollView.RemoveAllButtons();
-
         /*var blankButton = AppNetRadio.CreateHeaderButton(AppNetRadio.currentNowPlayingText, AppNetRadio.currentNowPlayingHeight); 
         ScrollView.AddButton(blankButton);
         AppNetRadio.UpdateNowPlayingButton(blankButton, ScrollView, false);*/
@@ -295,14 +295,13 @@ public class AppSelectedStation : NetRadioCustomApp {
     }
 
     public async Task GetStationMetadata() {
+        var metadataStack = GetMetadataStack(); 
+        foreach (Transform child in metadataStack.transform) {
+            child.gameObject.SetActive(false); 
+        }
+
         foreach (SimplePhoneButton button in ScrollView.Buttons) { if (IsHeaderButton(button)) {
-            if (button.Label.text.Contains("Peak listeners:")) {
-                button.Label.text = "Peak listeners: ";
-                SetLabelColor(button, Color.clear);
-            } else if (button.Label.text.Contains("Listeners:")) {
-                button.Label.text = "Listeners: ";
-                SetLabelColor(button, Color.clear);
-            } else if (button.Label.text.Contains("Genre:")) {
+            if (button.Label.text.Contains("Genre:")) {
                 button.Label.text = "Genre: ";
                 SetLabelColor(button, Color.clear);
             }
@@ -317,20 +316,23 @@ public class AppSelectedStation : NetRadioCustomApp {
                                     ? await GlobalRadio.GetMetadata(GlobalRadio.streamURLs[currentStationIndex])
                                     : GlobalRadio.currentMetadata;
         if (currentInfo == null) { return; }
-        Metadata.Source stationInfo = GetSource(currentInfo, urlForCurrent);
-
-        UpdateStationMetadata(stationInfo);
+        
+        UpdateStationMetadata(currentInfo);
     }
 
-    public void UpdateStationMetadata(Metadata.Source stationInfo) {
+    public void UpdateStationMetadata(IcecastStatus stationStatus) {
+        Metadata.Source stationInfo = GetSource(stationStatus, urlForCurrent);
+        var metadataStack = GetMetadataStack(); 
+        foreach (Transform child in metadataStack.transform) {
+            child.gameObject.SetActive(true); 
+        }
+
+        metadataStack.transform.GetChild(1).GetComponentInChildren<TextMeshProUGUI>().text = ShortenNumber((int)stationInfo.listeners);
+        metadataStack.transform.GetChild(2).GetComponentInChildren<TextMeshProUGUI>().text = ShortenNumber((int)stationInfo.listener_peak);
+        metadataStack.transform.GetChild(3).GetComponentInChildren<TextMeshProUGUI>().text = stationStatus.icestats.location;
+
         foreach (SimplePhoneButton button in ScrollView.Buttons) { if (IsHeaderButton(button)) {
-            if (button.Label.text.Contains("Peak listeners:")) {
-                button.Label.text = "Peak listeners: " + stationInfo.listener_peak;
-                SetLabelColor(button, Color.white);
-            } else if (button.Label.text.Contains("Listeners:")) {
-                button.Label.text = "Listeners: " + stationInfo.listeners;
-                SetLabelColor(button, Color.white);
-            } else if (button.Label.text.Contains("Genre:")) {
+            if (button.Label.text.Contains("Genre:")) {
                 button.Label.text = "Genre: " + stationInfo.genre;
                 SetLabelColor(button, Color.white);
             }
@@ -356,5 +358,45 @@ public class AppSelectedStation : NetRadioCustomApp {
         else if (!GlobalRadio.trackingMetadata) { 
             GlobalRadio.StartTrackingMetadata(true); 
         }
+    }
+
+    public static SimplePhoneButton CreateMetadataStack() {
+        var button = AppNetRadio.CreateHeaderButton("", 75f);
+        float fullWidth = 530f * 2f;
+        float quarterWidth = fullWidth*0.25f; 
+        float halfWidth = fullWidth - (quarterWidth*2f);
+
+        int i = 0;
+        while (i < 3) {
+            string name = i == 0 ? "Listeners" : (i == 1 ? "Peak Listeners" : "Location"); 
+            string sampleText = i == 2 ? "" : "";
+            float width = i == 2 ? halfWidth : quarterWidth; 
+            width -= 70f; 
+            width -= 25f;
+
+            var logo = new GameObject(name + " Metadata Icon");
+            var logoImage = logo.AddComponent<Image>();
+            logo.transform.SetParent(button.gameObject.transform, false); 
+            logoImage.sprite = MetadataIcons[i];
+
+            logo.RectTransform().sizeDelta = new Vector2(70f, 70f);
+            logo.RectTransform().localPosition += new Vector3(-455f + (quarterWidth*i), 50f, 0f);
+
+            var titleLabelGO = GameObject.Instantiate(button.Label.gameObject);
+            titleLabelGO.RectTransform().sizeDelta = new Vector2(width, 75f);
+            titleLabelGO.transform.SetParent(logo.transform, false); 
+            var titleLabel = titleLabelGO.GetComponent<TextMeshProUGUI>(); 
+            titleLabel.transform.localPosition += new Vector3(70f + 565f, 0f, 0f);
+            titleLabel.text = sampleText; 
+            titleLabel.fontSize = titleLabel.fontSizeMax = 50f;
+            titleLabel.fontSizeMin = 25f;
+
+            i++; 
+        }
+        return button;
+    }
+
+    public SimplePhoneButton GetMetadataStack() {
+        return ScrollView.Buttons[0] as SimplePhoneButton; 
     }
 }

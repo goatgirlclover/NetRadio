@@ -46,7 +46,7 @@ namespace NetRadio
 
         public const string PluginName = "NetRadio";
         public const string PluginGUID = "goatgirl.NetRadio";
-        public const string PluginVersion = "2.1.1";
+        public const string PluginVersion = "2.2.0";
 
         public static bool gameStarted = false;
 
@@ -136,7 +136,8 @@ namespace NetRadio
         }
 
         public static string StandardizeURL(string originalURL) { // for app display and savedata matching
-            string shortURL = originalURL.Replace("https://", "").Replace("http://", "").Trim().ToLower().TrimEnd('/'); ///originalURL.Replace("https://", "").Replace("http://", "").Replace("www.", "").Trim();
+            string shortURL = originalURL.Replace("https://", "").Replace("http://", "").Trim().ToLower().TrimEnd('/'); 
+              //originalURL.Replace("https://", "").Replace("http://", "").Replace("www.", "").Trim();
             return shortURL;
         }
 
@@ -217,6 +218,19 @@ namespace NetRadio
                 } catch (System.Exception) { } // don't do anything
             }
             return sources[0];
+        }
+
+        public static string ShortenNumber(int number) {
+            if (number < 1000) { return number.ToString(); } 
+            else if (number < 100000) {
+                double num = number / 1000.0;
+                return num < 10 ? num.ToString("0.#") + "k" :
+                       num.ToString("0") + "k";
+            } else {
+                double num = number / 1000000.0;
+                return num < 10 ? num.ToString("0.#") + "M" :
+                       num.ToString("0") + "M";
+            }
         }
     }
 }

@@ -79,6 +79,8 @@ namespace NetRadio
         public bool skipDisposal { get; private set; } = false;
 
         private Dictionary<string, string> knownStatusXSLs = new Dictionary<string, string>();
+
+        private bool disabling = false;
         
         private void Start() { 
             if (GlobalRadio == this) { 
@@ -113,6 +115,7 @@ namespace NetRadio
         }
 
         void OnDisable() {
+            disabling = true;
             skipDisposal = false;
             CleanUp();
         }
@@ -280,10 +283,11 @@ namespace NetRadio
             }
             
             bool deviceChanged = !stopped; 
-            if (deviceChanged && !(AppNetRadio.playing || threadRunning)) {
+            if (deviceChanged && !(AppNetRadio.playing || threadRunning || disabling)) {
                 Log.LogWarning("Output device changed?");
                 //var ogSoundOut = directSoundOut;
                 await Task.Delay(500);
+                if (playing || threadRunning || AppNetRadio.playing) { return; }
                 Log.LogWarning("Reconnecting?");
                 PlayRadioStation(currentStation);
                 AppNetRadio.PlayNoise();
@@ -386,7 +390,7 @@ namespace NetRadio
             Log.LogInfo("Metadata updated for station " + GetStationTitle() + ": " + currentSong);
             NetRadio.UpdateCurrentSong();
             if (PlayerUsingApp(typeof(AppSelectedStation)) && AppSelectedStation.isStation) {
-                AppSelectedStation.Instance.UpdateStationMetadata(source);
+                AppSelectedStation.Instance.UpdateStationMetadata(originalMetadata);
             }
         }
 
