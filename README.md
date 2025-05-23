@@ -11,6 +11,7 @@ This plugin requires the following .dlls to be placed in the \lib\ folder to be 
 - Some Unity Engine .dlls from Bomb Rush Cyberfunk's Data folder:
    - UnityEngine.UI.dll
    - Unity.TextMeshPro.dll
+- A publicized version of CSCore.Ffmpeg.dll (to be correctly patched by Harmony)
 
 With these files, run "dotnet build" in the project's root folder (same directory as NetRadio.csproj) and the .dll will be in the \bin\ folder. To run the build, ensure the files/folders in /include/ are placed in the same location as the .dll file.  
 ## Credits
