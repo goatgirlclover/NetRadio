@@ -72,8 +72,6 @@ public class AppSelectedStation : NetRadioCustomApp {
                     ? (int)SaveData.stationSettingsByURL[urlForCurrent].metadataMode : 1;
         metadataOffsetInMS = SaveData.stationSettingsByURL.ContainsKey(urlForCurrent) 
                     ? (int)(SaveData.stationSettingsByURL[urlForCurrent].metadataTimeOffsetSeconds*((decimal)1000.0)) : 0;
-
-        (ScrollView.Buttons[0] as SimplePhoneButton).Label.gameObject.transform.localPosition = new Vector3(-475f, 0f, 0f);
     }
 
     public override void OnAppInit()
@@ -182,6 +180,8 @@ public class AppSelectedStation : NetRadioCustomApp {
 
         SetVariables();
         _= GetStationMetadata(); 
+
+        (ScrollView.Buttons[0] as SimplePhoneButton).Label.gameObject.transform.localPosition = new Vector3(AppNetRadio.currentNowPlayingPosition, 0f, 0f);
         
         base.OnAppEnable();
     }

@@ -87,6 +87,7 @@ public class AppNetRadio : NetRadioCustomApp
 
     public static string currentNowPlayingText = "Now playing";
     public static float currentNowPlayingHeight = 100f;
+    public static float currentNowPlayingPosition = -475f; 
 
     public static string currentSFXPack { get { return Settings.sfxPack.Value.ToLower(); } }
 
@@ -134,7 +135,10 @@ public class AppNetRadio : NetRadioCustomApp
         }
     }
 
-    public override void OnReleaseLeft() { MyPhone.ReturnToHome(); } // ignore any previous app history
+    public override void OnReleaseLeft() { 
+        MyPhone.ReturnToHome(); // ignore any previous app history
+        currentNowPlayingPosition = -475f;
+    } 
 
     public override void OnAppInit()
     {
@@ -171,6 +175,8 @@ public class AppNetRadio : NetRadioCustomApp
         connectIcon.RectTransform().localPosition += new Vector3(iconOffsetX, iconOffsetY, 0f);
         connectIcon.RectTransform().localPosition -= new Vector3(0.5f*iconSize, 0.5f*iconSize, 0); // centered
         connectIcon.enabled = false;
+
+        (ScrollView.Buttons[0] as SimplePhoneButton).Label.gameObject.transform.localPosition = new Vector3(AppNetRadio.currentNowPlayingPosition, 0f, 0f);
 
         base.OnAppEnable();
         loaded = true;
@@ -299,7 +305,7 @@ public class AppNetRadio : NetRadioCustomApp
         realTime = 0f;
         filteredButtons.Clear();
 
-        var blankButton = CreateHeaderButton(AppNetRadio.currentNowPlayingText, AppNetRadio.currentNowPlayingHeight); 
+        var blankButton = CreateHeaderButton(AppNetRadio.currentNowPlayingText, AppNetRadio.currentNowPlayingHeight, 10000.0f); 
         ScrollView.AddButton(blankButton);
         AppNetRadio.UpdateNowPlayingButton(blankButton, ScrollView, false);
 
@@ -505,22 +511,24 @@ public class AppNetRadio : NetRadioCustomApp
             string nowPlaying = GlobalRadio.playing ? GlobalRadio.currentSong 
                 : (musicPlayer.musicTrackQueue.CurrentMusicTrack.Artist + " - " + musicPlayer.musicTrackQueue.CurrentMusicTrack.Title);
             button.Label.text = "Now playing " + nowPlaying;
+            if (GlobalRadio.playing) { button.Label.text = GlobalRadio.GetStationTitle() + ": " + button.Label.text; }
             button.Label.alignment = TextAlignmentOptions.Center;
         }
 
         currentNowPlayingText = button.Label.text;
         
-        if (button.Label.gameObject.RectTransform().sizeDelta.x == 10000.0f) {
-            button.Label.gameObject.transform.localPosition -= new Vector3(Core.dt*60f*2.5f, 0f, 0f);
+        if (button.Label.gameObject.RectTransform().sizeDelta.x >= 10000.0f) {
+            button.Label.gameObject.transform.localPosition -= new Vector3(Core.dt*60f*4f, 0f, 0f);
             button.Label.alignment = TextAlignmentOptions.Left;
             button.Label.text = "                                            " + button.Label.text;
-            if (button.Label.gameObject.transform.localPosition.x <= -475f - button.Label.textBounds.size.x - 1200f) {
+            if (!string.IsNullOrWhiteSpace(button.Label.text) && button.Label.textBounds.size.x > 0f && button.Label.gameObject.transform.localPosition.x <= -475f - button.Label.textBounds.size.x - 1200f) {
                 button.Label.gameObject.transform.localPosition = new Vector3(-475f, 0f, 0f);
+                Log.LogError(button.Label.textBounds.size.x);
             }
-        } else {
-            UpdateDynamicButtonHeight(button, scrollView, skipCheck);
-            if (button.ButtonImage.gameObject.RectTransform().sizeDelta.y > 0) { currentNowPlayingHeight = button.Height; }
-        }
+        } 
+        UpdateDynamicButtonHeight(button, scrollView, skipCheck);
+        if (button.ButtonImage.gameObject.RectTransform().sizeDelta.y > 0) { currentNowPlayingHeight = button.Height; }
+        currentNowPlayingPosition = button.Label.gameObject.transform.localPosition.x;
     }
 
     public static void UpdateDynamicButtonHeight(SimplePhoneButton button, PhoneScrollView scrollView, bool skipCheck = false) {
