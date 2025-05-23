@@ -15,6 +15,9 @@ lib/*.dll
 thunderstore/
 pkg_thunderstore/
 
+include/RadioApp-res/sfx/*
+!include/RadioApp-res/sfx/default/*
+
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
