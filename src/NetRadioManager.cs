@@ -447,8 +447,12 @@ namespace NetRadio
                         else { uri = new Uri(baseUrl); }
                     }
                     else { 
-                        Log.LogError($"Error getting metadata: {exception.Message}"); 
-                        Log.LogError(exception.StackTrace);  
+                        if (exception.Message.Contains("task was canceled")) {
+                            Log.LogWarning($"Error getting metadata: {exception.Message}");
+                        } else {
+                            Log.LogError($"Error getting metadata: {exception.Message}"); 
+                            Log.LogError(exception.StackTrace);  
+                        }
                         return null;
                     }
                 }

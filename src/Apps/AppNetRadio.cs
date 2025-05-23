@@ -36,6 +36,7 @@ public class AppNetRadio : NetRadioCustomApp
     
     private static VolumeSource tuningSource;
     private static FfmpegDecoder lastFfmpeg; 
+    private static BufferSource lastBuffer;
     public static WaveOut waveOut;
 
     public static Sprite SelectedButtonSprite;
@@ -429,11 +430,9 @@ public class AppNetRadio : NetRadioCustomApp
         if (sfxName == "tuning" && !startedByPlayNoise) { PlayNoise(); return; }
         try {
             if (!HasSFX(sfxName, sfxPack, out string[] files)) { throw new ArgumentException("Sound effect does not exist"); }
-            if (lastFfmpeg != null) { lastFfmpeg.Dispose(); }
             string filePath = files[0];
 
             FfmpegDecoder sfxDecoder = new FfmpegDecoder(filePath);
-            lastFfmpeg = sfxDecoder;
             sfxDecoder.Position = 0;
 
             int bufferInt = (int)Mathf.Round((float)sfxDecoder.WaveFormat.BytesPerSecond * 0.25f);
@@ -444,6 +443,13 @@ public class AppNetRadio : NetRadioCustomApp
             sfxReader.Volume = radioMusicVolume;
             waveOut.Initialize(new SampleToIeeeFloat32(sfxReader));
             waveOut.Play();
+
+            if (lastFfmpeg != null) { 
+                lastBuffer.Dispose();
+                lastFfmpeg.Dispose(); 
+            }
+            lastFfmpeg = sfxDecoder;
+            lastBuffer = buffer; 
         } catch (System.Exception ex) {
             if (sfxPack != "default") { 
                 Log.LogWarning("Error playing app SFX (" + sfxName + " from pack " + sfxPack + "): " + ex.Message);
