@@ -141,7 +141,7 @@ namespace NetRadio
                 Directory.CreateDirectory(NetRadio.customSFXpath); 
             }
 
-            List<string> sfxFolders = new List<string>(["Default", "Legacy", "Dial-up", "Skype", "Discord", "Wii", "3DS"]); 
+            List<string> sfxFolders = new List<string>(["Default", "Legacy", "Dial-up", "Skype", "Discord", "Wii", "3DS", "Vita"]); 
             try {
                 string[] files_plugindir = Directory.GetDirectories(Path.Combine(AppNetRadio.dataDirectory, "sfx/")).ToArray();
                 string[] files_customdir = Directory.GetDirectories(NetRadio.customSFXpath).ToArray();
