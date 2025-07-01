@@ -28,6 +28,8 @@ public class AppTrackHistory : NetRadioCustomApp {
     public static float appTime = 1f;
     public static bool refreshedButtonColors = false;
 
+    public override bool Available => false;
+
     public static void Initialize() { 
         PhoneAPI.RegisterApp<AppTrackHistory>("station track history"); 
     }
