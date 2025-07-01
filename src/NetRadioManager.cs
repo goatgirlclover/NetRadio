@@ -351,7 +351,7 @@ namespace NetRadio
                             Log.LogError($"Null metadata. Cancelling tracking"); 
                             trackingMetadata = false;
                             return;
-                        } else if (oldMetadata == null || GetSource(currentMetadata, currentStationURL).title != GetSource(oldMetadata, currentStationURL).title) {
+                        } else if (oldMetadata == null || GetSource(currentMetadata, currentStationURL).title.Trim() != GetSource(oldMetadata, currentStationURL).title.Trim()) {
                             decimal savedTime = SaveData.stationSettingsByURL.ContainsKey(urlForCurrent) 
                                     ? SaveData.stationSettingsByURL[urlForCurrent].metadataTimeOffsetSeconds : (decimal)0.0;
                             metadataTimeOffset = (float)savedTime;
@@ -377,20 +377,26 @@ namespace NetRadio
 
         private void HandleMetadata(IcecastStatus originalMetadata) {
             if (!playing) { return; }
+            
             Source source = GetSource(originalMetadata, currentStationURL);
-            currentSong = source.title;
+            string newSong = source.title;
             if (!string.IsNullOrWhiteSpace(source.artist)) { 
-                currentSong = source.artist + " - " + source.title;
-                currentSong = currentSong.Trim();
-                if (currentSong.StartsWith("- " + source.title)) { 
-                    currentSong = source.title; 
+                newSong = source.artist + " - " + source.title;
+                newSong = newSong.Trim();
+                if (newSong.StartsWith("- " + source.title)) { 
+                    newSong = source.title; 
                 }
             }
 
-            Log.LogInfo("Metadata updated for station " + GetStationTitle() + ": " + currentSong);
-            NetRadio.UpdateCurrentSong();
-            if (PlayerUsingApp(typeof(AppSelectedStation)) && AppSelectedStation.isStation) {
-                AppSelectedStation.Instance.UpdateStationMetadata(originalMetadata);
+            if (currentSong != newSong) {
+                currentSong = newSong;
+                Log.LogInfo("Metadata updated for station " + GetStationTitle() + ": " + currentSong);
+                NetRadio.UpdateCurrentSong();
+                if (PlayerUsingApp(typeof(AppSelectedStation)) && AppSelectedStation.isStation) {
+                    AppSelectedStation.Instance.UpdateStationMetadata(originalMetadata);
+                } /*else if (PlayerUsingApp(typeof(AppTrackHistory)) && AppSelectedStation.isStation) {
+                    AppTrackHistory.Instance.RefreshButtons();
+                } */
             }
         }
 

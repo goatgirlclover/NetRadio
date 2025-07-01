@@ -61,7 +61,7 @@ namespace NetRadio
             startupIndex = Config.Bind("Settings", "Startup Radio Station", 0, "The index of the station to play automatically if Play Radio on Startup is enabled (the first station in the NetRadio app is at index 0). If set to -1, the station will be chosen randomly.");
             configureRequireConnection = Config.Bind("Settings", "Configuring Stations Requires Connection", false, "Whether it is possible to change a station's settings within the NetRadio app without connecting to the station.");
             restartMusic = Config.Bind("Settings", "Restart Interrupted Music", true, "Whether to either restart the in-game music or reconnect to a previous station when disconnecting from (or failing to connect to) a radio station.");
-            scrollSpeed = Config.Bind("Settings", "Now Playing Scroll Speed", 6f, "How fast the Now Playing text at the top of the NetRadio app scrolls by.");
+            scrollSpeed = Config.Bind("Settings", "Now Playing Scroll Speed", 5f, "How fast the Now Playing text at the top of the NetRadio app scrolls by.");
 
             sfxPack = Config.Bind("Settings", "App SFX Pack", "Default", new ConfigDescription(@"The sound effect pack to use within the NetRadio app. Affects sound effects for tuning into a station, connecting, disconnecting, failing to connect, and losing connection mid-stream. Custom SFX packs placed in /RadioApp-res/sfx are also supported.", GetSFXFolders())); 
             noThreads = Config.Bind("Settings", "Disable Multithreading", false, "EXPERIMENTAL! Prevent multithreading for radio streaming, causing the game to freeze when starting a radio. Not recommended.");
@@ -155,7 +155,7 @@ namespace NetRadio
 
                     if (unique) {
                         if (trimmedDirectory == trimmedDirectory.ToLower()) {
-                            System.Globalization.TextInfo textInfo = new System.Globalization.CultureInfo("en-US", false).TextInfo;
+                            System.Globalization.TextInfo textInfo = NetRadio.culture.TextInfo;
                             trimmedDirectory = textInfo.ToTitleCase(trimmedDirectory); 
                         }
                         sfxFolders.Add(trimmedDirectory);

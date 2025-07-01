@@ -36,18 +36,22 @@ namespace NetRadio
         public static bool hasBRR = false;
         public static bool hasMusicCurator = false;
 
+        public event EventHandler<NewTrackEventArgs> NewTrack;
+
         private void Awake()
         {
             Instance = this;
             NetRadio.Log = base.Logger;
             Harmony.PatchAll(); 
-            Logger.LogInfo($"Plugin " + NetRadio.PluginName + " is loaded!");
+            
+            NetRadio.culture = new System.Globalization.CultureInfo("en-US", false);
 
             NetRadio.GlobalRadio = NetRadioManager.CreateRadio(this.transform);
             NetRadio.GlobalRadio.volume = 1.0f;
             
             AppNetRadio.Initialize();
             AppSelectedStation.Initialize();
+            AppTrackHistory.Initialize();
             Settings.BindSettings(Config);
 
             foreach (var plugin in BepInEx.Bootstrap.Chainloader.PluginInfos) { 
@@ -66,14 +70,14 @@ namespace NetRadio
                     Logger.LogError("CSCORE FFMPEG: " + e.Message);
                 };
             }
+
+            Logger.LogInfo($"Plugin " + NetRadio.PluginName + " is loaded!");
         }
 
-        private void OnDestroy() {
-            Harmony.UnpatchSelf(); 
-        }
-
-        private void Update() {
-            NetRadio.Update(); 
-        }
+        private void OnDestroy() { Harmony.UnpatchSelf(); }
+        private void Update() { NetRadio.Update();  }
+        public void OnNewTrack(NewTrackEventArgs args) { NewTrack?.Invoke(this, args); }
     }
+
+    public class NewTrackEventArgs : EventArgs { public string SongName { get; set; } }
 }

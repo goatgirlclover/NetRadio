@@ -46,7 +46,7 @@ namespace NetRadio
 
         public const string PluginName = "NetRadio";
         public const string PluginGUID = "goatgirl.NetRadio";
-        public const string PluginVersion = "2.2.0";
+        public const string PluginVersion = "2.2.1";
 
         public static bool gameStarted = false;
 
@@ -59,6 +59,8 @@ namespace NetRadio
         public static List<string> hasRedir = new List<string>{};
 
         public static string customSFXpath { get { return Path.Combine(BepInEx.Paths.ConfigPath, PluginName, "CustomSFXPacks"); } }
+
+        public static System.Globalization.CultureInfo culture; 
 
         public static void Update() {
             if (NetRadio.GlobalRadio is NetRadioManager) {
@@ -195,6 +197,33 @@ namespace NetRadio
 
         public static void UpdateCurrentSong(bool skipCheck = false) {
             if (!NetRadio.GlobalRadio.playing) { return; }
+
+            var originalCulture = System.Threading.Thread.CurrentThread.CurrentCulture;
+            System.Threading.Thread.CurrentThread.CurrentCulture = culture;
+            
+            try {
+                DateTime currentDateTime = DateTime.Now;
+                string songName = GlobalRadio.currentSong;
+                if (!AppTrackHistory.trackHistory.ContainsKey(GlobalRadio.currentStation)) {
+                    SortedDictionary<DateTime, string> sortedDictionary = new SortedDictionary<DateTime, string>();
+                    sortedDictionary.Add(currentDateTime, songName);
+                    AppTrackHistory.trackHistory.Add(GlobalRadio.currentStation, sortedDictionary);
+                    Log.LogInfo(currentDateTime);
+                    Log.LogInfo(songName);
+                    Log.LogInfo(AppTrackHistory.trackHistory.ContainsKey(GlobalRadio.currentStation));
+                } else {
+                    AppTrackHistory.trackHistory[GlobalRadio.currentStation].Add(currentDateTime, songName); 
+                }
+            } catch (System.Exception ex) {
+                Log.LogError($"Error updating track history: {ex.Message}"); 
+                Log.LogError(ex.StackTrace);
+            }
+
+            System.Threading.Thread.CurrentThread.CurrentCulture = originalCulture;
+
+            NewTrackEventArgs args = new NewTrackEventArgs { SongName = GlobalRadio.currentSong };
+            NetRadioPlugin.Instance.OnNewTrack(args);
+            
             if (skipCheck || NetRadio.PlayerUsingMusicApp()) {
                 AppMusicPlayer musicApp = NetRadio.player.phone.m_CurrentApp as AppMusicPlayer;
                 

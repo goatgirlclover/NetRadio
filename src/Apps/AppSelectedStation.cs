@@ -272,7 +272,15 @@ public class AppSelectedStation : NetRadioCustomApp {
         };
         ScrollView.AddButton(nextButton);
 
-
+        if (AppTrackHistory.trackHistory.ContainsKey(currentStationIndex)) {
+            nextButton = PhoneUIUtility.CreateSimpleButton("Track history...");
+            nextButton.OnConfirm += () => {
+                if (!AppTrackHistory.trackHistory.ContainsKey(currentStationIndex)) { return; }
+                MyPhone.OpenApp(typeof(AppTrackHistory));
+            };
+            ScrollView.AddButton(nextButton);
+        }
+        
         nextButton = PhoneUIUtility.CreateSimpleButton("Copy URL to clipboard");
         nextButton.OnConfirm += () => {
             time = 0.0f;
