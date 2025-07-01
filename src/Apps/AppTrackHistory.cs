@@ -25,6 +25,9 @@ public class AppTrackHistory : NetRadioCustomApp {
 
     public static Dictionary<int, SortedDictionary<DateTime, string>> trackHistory = new Dictionary<int, SortedDictionary<DateTime, string>>(); 
 
+    public static float appTime = 1f;
+    public static bool refreshedButtonColors = false;
+
     public static void Initialize() { 
         PhoneAPI.RegisterApp<AppTrackHistory>("station track history"); 
     }
@@ -40,6 +43,7 @@ public class AppTrackHistory : NetRadioCustomApp {
         CreateAndSaveTitleBar(GlobalRadio.GetStationTitle(currentStationIndex), AppNetRadio.UnselectedAntennaSprites[2]);
         AddButtons();
         base.OnAppEnable();
+        appTime = 1f;
     }
 
     private void AddButtons() {
@@ -54,13 +58,39 @@ public class AppTrackHistory : NetRadioCustomApp {
             if (!usedSongs.Contains(song)) { 
                 string shortTime = time.ToShortTimeString();
                 var nextButton = PhoneUIUtility.CreateSimpleButton("(" + shortTime + ") " + song);
-                nextButton.OnConfirm += () => { }; //GUIUtility.systemCopyBuffer = Settings.configURLs[currentStationIndex]; 
+                nextButton.OnConfirm += () => { 
+                    try {
+                        RefreshButtonColors();
+                        SimplePhoneButton button = ScrollView.Buttons[ScrollView.SelectedIndex] as SimplePhoneButton;
+                        string songName = button.Label.text.Split(new char[] {')'}, 2, StringSplitOptions.RemoveEmptyEntries)[1].Trim();
+                        GUIUtility.systemCopyBuffer = songName;
+                        SetLabelColor(button, Color.green);
+                        appTime = 0f;
+                        refreshedButtonColors = false;
+                    } catch (System.Exception) { } // do nothing
+                };
                 ScrollView.AddButton(nextButton);
                 usedSongs.Add(song);
             }
         }
 
         System.Threading.Thread.CurrentThread.CurrentCulture = originalCulture;
+    }
+    public override void OnAppUpdate() {
+        appTime += Time.deltaTime;
+        if (appTime >= 1f && !refreshedButtonColors) {
+            RefreshButtonColors();
+        }
+        base.OnAppUpdate();
+    }
+
+    private void RefreshButtonColors() {
+        foreach(SimplePhoneButton button in ScrollView.Buttons) {
+            if (button.Label.faceColor == Color.green) {
+                SetLabelColor(button, Color.white);
+            }
+        }
+        refreshedButtonColors = true;
     }
 
     public override void OnAppDisable()
