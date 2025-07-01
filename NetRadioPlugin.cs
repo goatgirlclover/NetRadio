@@ -56,7 +56,10 @@ namespace NetRadio
 
             foreach (var plugin in BepInEx.Bootstrap.Chainloader.PluginInfos) { 
                 if (plugin.Value.Metadata.GUID.Contains("BombRushRadio")) { hasBRR = true; } 
-                if (plugin.Value.Metadata.GUID.Contains("MusicCurator")) { hasMusicCurator = true; }
+                if (plugin.Value.Metadata.GUID.Contains("MusicCurator")) { 
+                    hasMusicCurator = true; 
+                    if (plugin.Value.Metadata.Version.Major > 0) { MusicCuratorHelper.SetupNetRadioIntegration(); }
+                }
                 if (plugin.Value.Metadata.GUID.Contains("LiveRadioPOC")) {
                     NetRadio.Log.LogError("Development version of " + NetRadio.PluginGUID + " detected! Please delete the development version (goatgirl.LiveRadioPOC)!");
                 }

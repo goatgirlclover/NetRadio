@@ -46,7 +46,7 @@ namespace NetRadio
 
         public const string PluginName = "NetRadio";
         public const string PluginGUID = "goatgirl.NetRadio";
-        public const string PluginVersion = "2.2.1";
+        public const string PluginVersion = "2.2.2";
 
         public static bool gameStarted = false;
 

@@ -4,7 +4,7 @@
     <TargetFramework>net481</TargetFramework>
     <AssemblyName>NetRadio</AssemblyName>
     <Description>Radio app for Bomb Rush Cyberfunk</Description>
-    <Version>2.2.1</Version>
+    <Version>2.2.2</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
@@ -31,5 +31,6 @@
   <Reference Include="UnityEngine.UI.dll"><HintPath>lib\UnityEngine.UI.dll</HintPath></Reference>
   <Reference Include="CommonAPI.dll"><HintPath>lib\CommonAPI.dll</HintPath></Reference>
   <Reference Include="CSCore.Ffmpeg.dll"><HintPath>lib\CSCore.Ffmpeg.dll</HintPath></Reference>
+  <Reference Include="MusicCurator.dll"><HintPath>lib\MusicCurator.dll</HintPath></Reference>
   </ItemGroup>
 </Project>
