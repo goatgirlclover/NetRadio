@@ -85,7 +85,7 @@ public class AppNetRadio : NetRadioCustomApp
     public static PhoneButton lastSelectedButton;
     public static bool loaded = false;
 
-    public static string currentNowPlayingText = "Now playing";
+    public static string currentNowPlayingText = "Playing";
     public static float currentNowPlayingHeight = 100f;
     public static float currentNowPlayingPosition = -475f; 
 
@@ -510,15 +510,15 @@ public class AppNetRadio : NetRadioCustomApp
         } else {
             string nowPlaying = GlobalRadio.playing ? GlobalRadio.currentSong 
                 : (musicPlayer.musicTrackQueue.CurrentMusicTrack.Artist + " - " + musicPlayer.musicTrackQueue.CurrentMusicTrack.Title);
-            button.Label.text = "Now playing " + nowPlaying;
-            if (GlobalRadio.playing) { button.Label.text = GlobalRadio.GetStationTitle() + ": " + button.Label.text; }
+            button.Label.text = "Playing " + nowPlaying;
+            if (GlobalRadio.playing) { button.Label.text = button.Label.text + " on " + GlobalRadio.GetStationTitle(); }
             button.Label.alignment = TextAlignmentOptions.Center;
         }
 
         currentNowPlayingText = button.Label.text;
         
         if (button.Label.gameObject.RectTransform().sizeDelta.x >= 10000.0f) {
-            button.Label.gameObject.transform.localPosition -= new Vector3(Core.dt*60f*4f, 0f, 0f);
+            button.Label.gameObject.transform.localPosition -= new Vector3(Core.dt*60f*Settings.scrollSpeed.Value, 0f, 0f);
             button.Label.alignment = TextAlignmentOptions.Left;
             button.Label.text = "                                            " + button.Label.text;
             if (!string.IsNullOrWhiteSpace(button.Label.text) && button.Label.textBounds.size.x > 0f && button.Label.gameObject.transform.localPosition.x <= -475f - button.Label.textBounds.size.x - 1200f) {
