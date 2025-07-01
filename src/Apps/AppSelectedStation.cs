@@ -351,18 +351,6 @@ public class AppSelectedStation : NetRadioCustomApp {
         } }
     }
 
-    public void SetLabelColor(SimplePhoneButton nextButton, Color color) {
-        if (color == Color.white) { // treat as default
-            nextButton.Label.faceColor = ScrollView.SelectedIndex == ScrollView.Buttons.IndexOf(nextButton) ? LabelSelectedColorDefault : LabelUnselectedColorDefault;
-            nextButton.LabelSelectedColor = LabelSelectedColorDefault;
-            nextButton.LabelUnselectedColor = LabelUnselectedColorDefault;
-        } else {
-            nextButton.Label.faceColor = color;
-            nextButton.LabelSelectedColor = color;
-            nextButton.LabelUnselectedColor = color;
-        }
-    }
-
     private void UpdateGlobalRadioMetaMode() {
         if (!isStation) { return; }
         GlobalRadio.ResetMetadata();

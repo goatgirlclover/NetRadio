@@ -111,5 +111,17 @@ namespace NetRadio.Apps
                 PlaySelectSFX();
             }
         }
+
+        public void SetLabelColor(SimplePhoneButton nextButton, Color color) {
+            if (color == Color.white) { // treat as default
+                nextButton.Label.faceColor = ScrollView.SelectedIndex == ScrollView.Buttons.IndexOf(nextButton) ? LabelSelectedColorDefault : LabelUnselectedColorDefault;
+                nextButton.LabelSelectedColor = LabelSelectedColorDefault;
+                nextButton.LabelUnselectedColor = LabelUnselectedColorDefault;
+            } else {
+                nextButton.Label.faceColor = color;
+                nextButton.LabelSelectedColor = color;
+                nextButton.LabelUnselectedColor = color;
+            }
+        }
     }
 }
