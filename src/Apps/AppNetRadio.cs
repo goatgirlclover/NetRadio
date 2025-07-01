@@ -85,7 +85,7 @@ public class AppNetRadio : NetRadioCustomApp
     public static PhoneButton lastSelectedButton;
     public static bool loaded = false;
 
-    public static string currentNowPlayingText = "Playing";
+    public static string currentNowPlayingText = "";
     public static float currentNowPlayingHeight = 100f;
     public static float currentNowPlayingPosition = -475f; 
 
@@ -510,7 +510,7 @@ public class AppNetRadio : NetRadioCustomApp
         } else {
             string nowPlaying = GlobalRadio.playing ? GlobalRadio.currentSong 
                 : (musicPlayer.musicTrackQueue.CurrentMusicTrack.Artist + " - " + musicPlayer.musicTrackQueue.CurrentMusicTrack.Title);
-            button.Label.text = "Playing " + nowPlaying;
+            button.Label.text = nowPlaying + " now playing";
             if (GlobalRadio.playing) { button.Label.text = button.Label.text + " on " + GlobalRadio.GetStationTitle(); }
             button.Label.alignment = TextAlignmentOptions.Center;
         }
