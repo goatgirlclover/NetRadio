@@ -208,9 +208,6 @@ namespace NetRadio
                     SortedDictionary<DateTime, string> sortedDictionary = new SortedDictionary<DateTime, string>();
                     sortedDictionary.Add(currentDateTime, songName);
                     AppTrackHistory.trackHistory.Add(GlobalRadio.currentStation, sortedDictionary);
-                    Log.LogInfo(currentDateTime);
-                    Log.LogInfo(songName);
-                    Log.LogInfo(AppTrackHistory.trackHistory.ContainsKey(GlobalRadio.currentStation));
                 } else {
                     AppTrackHistory.trackHistory[GlobalRadio.currentStation].Add(currentDateTime, songName); 
                 }

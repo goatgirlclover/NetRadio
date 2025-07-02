@@ -524,7 +524,6 @@ public class AppNetRadio : NetRadioCustomApp
             button.Label.text = "                                            " + button.Label.text;
             if (!string.IsNullOrWhiteSpace(button.Label.text) && button.Label.textBounds.size.x > 0f && button.Label.gameObject.transform.localPosition.x <= -475f - button.Label.textBounds.size.x - 1200f) {
                 button.Label.gameObject.transform.localPosition = new Vector3(-475f, 0f, 0f);
-                Log.LogError(button.Label.textBounds.size.x);
             }
         } 
         UpdateDynamicButtonHeight(button, scrollView, skipCheck);
