@@ -30,6 +30,7 @@ public class AppSelectedStation : NetRadioCustomApp {
     public static int currentStationIndex;
 
     public static float time = 0.0f;
+    public static float realTime = 0.0f;
     public static bool justCopied = false;
     public static bool justFailedCopy = false;
     
@@ -52,6 +53,12 @@ public class AppSelectedStation : NetRadioCustomApp {
     public static bool isStation { get { return GlobalRadio.playing && GlobalRadio.currentStation == currentStationIndex; } }
 
     public static List<Sprite> MetadataIcons = new List<Sprite>{}; // listeners (person icon), peak (graph), location (globe)
+    
+    public static bool updateKaomoji = true;
+    public static int whichKaomoji = 1;
+    public static float timeMultiplier = 1;
+    public static List<Sprite> kaomoji1 = new List<Sprite>{};
+    public static List<Sprite> kaomoji2 = new List<Sprite>{}; 
 
     public static void Initialize() { 
         PhoneAPI.RegisterApp<AppSelectedStation>("selected station"); 
@@ -60,6 +67,16 @@ public class AppSelectedStation : NetRadioCustomApp {
         MetadataIcons.Add(LoadSprite(Path.Combine(AppNetRadio.dataDirectory, "Metadata-Listeners.png")));
         MetadataIcons.Add(LoadSprite(Path.Combine(AppNetRadio.dataDirectory, "Metadata-Peak.png")));
         MetadataIcons.Add(LoadSprite(Path.Combine(AppNetRadio.dataDirectory, "Metadata-Location.png")));
+
+        kaomoji1.Clear();
+        kaomoji2.Clear();
+        int i = 0;
+        while (i < 7) {
+            i++;
+            kaomoji1.Add(LoadSprite(Path.Combine(AppNetRadio.dataDirectory, "kao/moji" + i.ToString() + "1" + ".png")));
+            kaomoji2.Add(LoadSprite(Path.Combine(AppNetRadio.dataDirectory, "kao/moji" + i.ToString() + "2" + ".png")));
+        }
+        
     }
 
     public void SetVariables() {
@@ -96,6 +113,7 @@ public class AppSelectedStation : NetRadioCustomApp {
 
     public override void OnAppUpdate() {
         time += Time.deltaTime;
+        realTime += Time.deltaTime;
 
         if (justCopied && time > 1.0) {
             justCopied = false;
@@ -170,6 +188,13 @@ public class AppSelectedStation : NetRadioCustomApp {
                 SaveData.stationSettingsByURL.Add(key, stationSettings); 
             }
         }
+
+        if (updateKaomoji) {
+            float kaomojiFrameFloat = realTime*timeMultiplier % 2f;
+            int kaomojiFrame = (int)Mathf.Clamp01(kaomojiFrameFloat);
+            List<Sprite> kaomojiList = kaomojiFrame == 0 ? kaomoji1 : kaomoji2; 
+            GetMetadataStack().transform.GetChild(4).GetComponentInChildren<Image>().sprite = kaomojiList[whichKaomoji - 1];
+        }
     }
 
     public override void OnAppEnable() {
@@ -178,11 +203,15 @@ public class AppSelectedStation : NetRadioCustomApp {
         justCopied = false;
         changingAny = false;
         time = 0.0f;
+        realTime = 0.0f;
 
         SetVariables();
         _= GetStationMetadata(); 
 
         (ScrollView.Buttons[0] as SimplePhoneButton).Label.gameObject.transform.localPosition = new Vector3(AppNetRadio.currentNowPlayingPosition, 0f, 0f);
+        whichKaomoji = rando.Next(1, 8);
+        int timeMultiplier100 = rando.Next(0, 101);
+        timeMultiplier = timeMultiplier100 >= 98 ? 10 : 1 + (timeMultiplier100/100f);
         
         base.OnAppEnable();
     }
@@ -195,6 +224,7 @@ public class AppSelectedStation : NetRadioCustomApp {
         justCopied = false;
         changingAny = false;
         time = 0.0f;
+        realTime = 0.0f;
         
         SaveData.Instance.Save();
     }
@@ -306,17 +336,7 @@ public class AppSelectedStation : NetRadioCustomApp {
     }
 
     public async Task GetStationMetadata() {
-        var metadataStack = GetMetadataStack(); 
-        foreach (Transform child in metadataStack.transform) {
-            child.gameObject.SetActive(false); 
-        }
-
-        foreach (SimplePhoneButton button in ScrollView.Buttons) { if (IsHeaderButton(button)) {
-            if (button.Label.text.Contains("Genre:")) {
-                button.Label.text = "Genre: ";
-                SetLabelColor(button, Color.clear);
-            }
-        } }
+        HideMetadataInfo();
 
         bool cancelTracking = SaveData.stationSettingsByURL.ContainsKey(urlForCurrent) 
                                 ? SaveData.stationSettingsByURL[urlForCurrent].metadataMode == 0 : false;
@@ -331,12 +351,28 @@ public class AppSelectedStation : NetRadioCustomApp {
         UpdateStationMetadata(currentInfo);
     }
 
+    private void HideMetadataInfo() {
+        var metadataStack = GetMetadataStack(); 
+        foreach (Transform child in metadataStack.transform) {
+            child.gameObject.SetActive(child.gameObject.name.Contains("Kaomoji"));
+        }
+        updateKaomoji = true;
+
+        foreach (SimplePhoneButton button in ScrollView.Buttons) { if (IsHeaderButton(button)) {
+            if (button.Label.text.Contains("Genre:")) {
+                button.Label.text = "Genre: ";
+                SetLabelColor(button, Color.clear);
+            }
+        } }
+    }
+
     public void UpdateStationMetadata(IcecastStatus stationStatus) {
         Metadata.Source stationInfo = GetSource(stationStatus, urlForCurrent);
         var metadataStack = GetMetadataStack(); 
         foreach (Transform child in metadataStack.transform) {
-            child.gameObject.SetActive(true); 
+            child.gameObject.SetActive(!child.gameObject.name.Contains("Kaomoji")); 
         }
+        updateKaomoji = false;
 
         metadataStack.transform.GetChild(1).GetComponentInChildren<TextMeshProUGUI>().text = ShortenNumber((int)stationInfo.listeners);
         metadataStack.transform.GetChild(2).GetComponentInChildren<TextMeshProUGUI>().text = ShortenNumber((int)stationInfo.listener_peak);
@@ -353,7 +389,10 @@ public class AppSelectedStation : NetRadioCustomApp {
     private void UpdateGlobalRadioMetaMode() {
         if (!isStation) { return; }
         GlobalRadio.ResetMetadata();
-        if (currentMetadataMode == 0) { GlobalRadio.StopTrackingMetadata(false); }
+        if (currentMetadataMode == 0) { 
+            GlobalRadio.StopTrackingMetadata(false); 
+            HideMetadataInfo();
+        }
         else if (!GlobalRadio.trackingMetadata) { 
             GlobalRadio.StartTrackingMetadata(true); 
         }
@@ -392,6 +431,13 @@ public class AppSelectedStation : NetRadioCustomApp {
 
             i++; 
         }
+
+        var kao = new GameObject("Kaomoji");
+        var kaoImage = kao.AddComponent<Image>();
+        kao.transform.SetParent(button.gameObject.transform, false); 
+        kaoImage.sprite = LoadSprite(Path.Combine(AppNetRadio.dataDirectory, "kao/moji11.png"));
+        kao.RectTransform().sizeDelta = new Vector2(1024f, 128f);
+
         return button;
     }
 
