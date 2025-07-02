@@ -53,11 +53,11 @@ public class AppTrackHistory : NetRadioCustomApp {
         System.Threading.Thread.CurrentThread.CurrentCulture = NetRadio.culture;
 
         SortedDictionary<DateTime, string> dictionary = trackHistory[currentStationIndex];
-        List<string> usedSongs = new List<string>();
+        string previousSong = "";
 
         foreach (DateTime time in dictionary.Keys.Reverse()) {
             string song = dictionary[time]; 
-            if (!usedSongs.Contains(song)) { 
+            if (previousSong != song) { 
                 string shortTime = time.ToShortTimeString();
                 var nextButton = PhoneUIUtility.CreateSimpleButton("(" + shortTime + ") " + song);
                 nextButton.OnConfirm += () => { 
@@ -72,8 +72,8 @@ public class AppTrackHistory : NetRadioCustomApp {
                     } catch (System.Exception) { } // do nothing
                 };
                 ScrollView.AddButton(nextButton);
-                usedSongs.Add(song);
             }
+            previousSong = song;
         }
 
         System.Threading.Thread.CurrentThread.CurrentCulture = originalCulture;

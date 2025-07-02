@@ -147,6 +147,7 @@ public class AppNetRadio : NetRadioCustomApp
         base.OnAppInit();
         CreateTitleBar(appName, IconSprite); //CreateIconlessTitleBar(appName);
         ScrollView = PhoneScrollView.Create(this);
+        ScrollView.Length = 1500f;
 
         AddURLButtons();
     }   
@@ -514,7 +515,7 @@ public class AppNetRadio : NetRadioCustomApp
             if (GlobalRadio.playing) { button.Label.text = button.Label.text + " on " + GlobalRadio.GetStationTitle(); }
             button.Label.alignment = TextAlignmentOptions.Center;
         }
-
+        
         currentNowPlayingText = button.Label.text;
         
         if (button.Label.gameObject.RectTransform().sizeDelta.x >= 10000.0f) {

@@ -79,6 +79,7 @@ public class AppSelectedStation : NetRadioCustomApp {
         base.OnAppInit();
         Instance = this;
         ScrollView = PhoneScrollView.Create(this);
+        ScrollView.Length = 1550f;
 
         var blankButton = AppNetRadio.CreateHeaderButton(AppNetRadio.currentNowPlayingText, 70f, 10000.0f); 
         ScrollView.AddButton(blankButton);
@@ -272,14 +273,12 @@ public class AppSelectedStation : NetRadioCustomApp {
         };
         ScrollView.AddButton(nextButton);
 
-        if (AppTrackHistory.trackHistory.ContainsKey(currentStationIndex)) {
-            nextButton = PhoneUIUtility.CreateSimpleButton("Track history...");
-            nextButton.OnConfirm += () => {
-                if (!AppTrackHistory.trackHistory.ContainsKey(currentStationIndex)) { return; }
-                MyPhone.OpenApp(typeof(AppTrackHistory));
-            };
-            ScrollView.AddButton(nextButton);
-        }
+        nextButton = PhoneUIUtility.CreateSimpleButton("Track history...");
+        nextButton.OnConfirm += () => {
+            if (!AppTrackHistory.trackHistory.ContainsKey(currentStationIndex)) { return; }
+            MyPhone.OpenApp(typeof(AppTrackHistory));
+        };
+        ScrollView.AddButton(nextButton);
         
         nextButton = PhoneUIUtility.CreateSimpleButton("Copy URL to clipboard");
         nextButton.OnConfirm += () => {
