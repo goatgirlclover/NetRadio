@@ -26,6 +26,14 @@ namespace NetRadio
 
         public static List<string> streamTitles = new List<string>{}; 
 
+        public static ConfigEntry<string> preferredFUFMStream;
+        public static Dictionary<string, string> PreferredFUFMStreams = new()
+        {
+            {"VORBIS", Settings.FUFMurl + "_vorbis192"},
+            {"MP3", Settings.FUFMurl},
+            {"OPUS", Settings.FUFMurl + "_opus96"}
+        };
+
         // appended to start of station list
         public const string FUFMurl = @"https://funkyunclefm.net/stream";
         public static readonly List<string> previousFUFMurls = new List<string>() {
@@ -34,7 +42,7 @@ namespace NetRadio
         };
 
         public static readonly Dictionary<string, StationSettings> partneredStations = new Dictionary<string, StationSettings> {
-            { "(FunkyUncleFM)" + FUFMurl + ",", new StationSettings() { metadataTimeOffsetSeconds = (decimal)7.00 } }
+            { "(FunkyUncleFM)" + FUFMurl + ",", new StationSettings() { metadataTimeOffsetSeconds = (decimal)0.00 } }
         };
         
 
@@ -48,6 +56,13 @@ namespace NetRadio
         public static List<string> configURLs;
 
         public static void BindSettings(ConfigFile Config) {
+            preferredFUFMStream = Config.Bind(
+                "Settings",
+                "Preferred FunkyUncleFM Stream",
+                "OPUS",
+                "FunkyUncleFM stream to use by default. Acceptable values: MP3, VORBIS, or OPUS. More information at https://funkyunclefm.net/list.html"
+            );
+
             streamURLsUnsplit = Config.Bind(
                 "Settings",          // The section under which the option is shown
                 "Custom Stream URLs",     // The key of the configuration option in the configuration file
@@ -114,6 +129,17 @@ namespace NetRadio
             AppNetRadio.originalURLLabelText.Clear();
             AppNetRadio.urlWrapOffsets.Clear();
             AppNetRadio.urlIsTooLong.Clear();
+        }
+
+        public static string GetPreferredFUFMStream()
+        {
+            return GetPreferredFUFMStream(Settings.preferredFUFMStream.Value.ToUpper());
+        }
+
+        public static string GetPreferredFUFMStream(string id)
+        {
+            if (PreferredFUFMStreams.Keys.Contains(id)) { return PreferredFUFMStreams[id]; }
+            else { return PreferredFUFMStreams["OPUS"]; }
         }
 
         public static List<string> SplitStringByCommas(string input) {

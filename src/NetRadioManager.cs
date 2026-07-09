@@ -212,7 +212,11 @@ namespace NetRadio
 
         private void CheckForRedirection() {
             try {
-                if (!NetRadio.hasRedir.Contains(currentStationURL)) {
+                if (currentStationURL == Settings.FUFMurl)
+                {
+                    streamURLs[currentStation] = Settings.GetPreferredFUFMStream(); 
+                }
+                else if (!NetRadio.hasRedir.Contains(currentStationURL)) {
                     string redirURL = NetRadio.GetRedirectedURL(currentStationURL);
                     if (redirURL != null) { streamURLs[currentStation] = redirURL; }
                 }    
@@ -252,6 +256,13 @@ namespace NetRadio
                 skipDisposal = false;
             } 
             catch (System.Exception exception) { 
+                if (Settings.PreferredFUFMStreams.Values.Contains(currentStationURL) && currentStationURL != Settings.FUFMurl)
+                {
+                    streamURLs[currentStation] = Settings.FUFMurl; // MP3, fallback
+                    PlayURL();
+                    return;
+                }
+
                 if (currentStationURL.StartsWith("http://")) {
                     streamURLs[currentStation] = currentStationURL.Replace("http://", "https://");
                     PlayURL();
