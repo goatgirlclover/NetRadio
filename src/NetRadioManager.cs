@@ -351,7 +351,7 @@ namespace NetRadio
             bool looped = false;
             
             while (trackingMetadata && playing) {
-                int awaitTime = 1000; 
+                int awaitTime = 10000; 
                 if (!string.IsNullOrWhiteSpace(currentStationURL)) { 
                     try {
                         float realtimeAtStart = Time.realtimeSinceStartup;
