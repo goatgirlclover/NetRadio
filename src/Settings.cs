@@ -50,7 +50,7 @@ namespace NetRadio
         // potentially useful for radio expansion mods
         public static Dictionary<string, StationSettings> extraStations = new Dictionary<string, StationSettings>();
 
-        // TEMPORARILY REMOVED // 
+        // PERMANENTLY REMOVED // 
         //public static ConfigEntry<bool> moreCodecs; 
 
         public static List<string> configURLs;
@@ -67,7 +67,7 @@ namespace NetRadio
                 "Settings",          // The section under which the option is shown
                 "Custom Stream URLs",     // The key of the configuration option in the configuration file
                 "",    // The default value
-                "List of custom radio station URLs, separated by commas. To add a display name, format your link like: (StationName)https://stationlink.com/stream.mp3"); // Description of the option 
+                "List of custom radio station URLs, separated by commas. To add a display name, format your link like: (StationName)https://radiostation.ontheinternet/stream.mp3"); // Description of the option 
             streamURLsUnsplit.SettingChanged += UpdateSettingsEvent;
 
             streamVolume = Config.Bind("Settings", "Radio Volume", 1f, "Relative volume of all radio streams compared to in-game music. Note that you can set individual stations' volumes in the NetRadio app.");
