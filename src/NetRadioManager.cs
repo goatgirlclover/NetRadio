@@ -335,6 +335,7 @@ namespace NetRadio
         public async Task<IcecastStatus> GetMetadata(string url = "") {
             if (m_httpClient == null) { m_httpClient = CreateHTTPClient(); }
             if (url == "") { url = currentStationURL; }
+            if (Settings.PreferredFUFMStreams.Values.Contains(url)) { url = Settings.FUFMurl; }
             IcecastStatus metadata = await GetMetaDataFromIceCastStream(url);
             return metadata; 
         }
@@ -352,17 +353,21 @@ namespace NetRadio
             
             while (trackingMetadata && playing) {
                 int awaitTime = 10000; 
-                if (!string.IsNullOrWhiteSpace(currentStationURL)) { 
+                string metadataURL = currentStationURL;
+                if (!string.IsNullOrWhiteSpace(metadataURL)) { 
                     try {
                         float realtimeAtStart = Time.realtimeSinceStartup;
-                        currentMetadata = await GetMetaDataFromIceCastStream(currentStationURL); 
+                        if (Settings.PreferredFUFMStreams.Values.Contains(metadataURL)) { 
+                            metadataURL = Settings.FUFMurl; // more reliable
+                        }
+                        currentMetadata = await GetMetaDataFromIceCastStream(metadataURL); 
                         float processingTime = Time.realtimeSinceStartup - realtimeAtStart;
 
                         if (currentMetadata == null) {
                             Log.LogError($"Null metadata. Cancelling tracking"); 
                             trackingMetadata = false;
                             return;
-                        } else if (oldMetadata == null || GetSource(currentMetadata, currentStationURL).title.Trim() != GetSource(oldMetadata, currentStationURL).title.Trim()) {
+                        } else if (oldMetadata == null || GetSource(currentMetadata, metadataURL).title.Trim() != GetSource(oldMetadata, metadataURL).title.Trim()) {
                             decimal savedTime = SaveData.stationSettingsByURL.ContainsKey(urlForCurrent) 
                                     ? SaveData.stationSettingsByURL[urlForCurrent].metadataTimeOffsetSeconds : (decimal)0.0;
                             metadataTimeOffset = (float)savedTime;
