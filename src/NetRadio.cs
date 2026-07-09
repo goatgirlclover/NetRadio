@@ -234,6 +234,10 @@ namespace NetRadio
         }
 
         public static Source GetSource(IcecastStatus icecastStatus, string url = "") {
+            if (Settings.PreferredFUFMStreams.ContainsValue(url)) { 
+                url = Settings.FUFMurl; // more reliable
+            }
+
             List<Source> sources = icecastStatus.icestats.source;
             if (!(sources.Count == 1 || string.IsNullOrWhiteSpace(url))) {
                 try {

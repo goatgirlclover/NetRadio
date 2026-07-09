@@ -212,7 +212,7 @@ namespace NetRadio
 
         private void CheckForRedirection() {
             try {
-                if (currentStationURL == Settings.FUFMurl)
+                if (Settings.PreferredFUFMStreams.Values.Contains(currentStationURL))
                 {
                     streamURLs[currentStation] = Settings.GetPreferredFUFMStream(); 
                 }
@@ -236,8 +236,6 @@ namespace NetRadio
                 ffmpegReader = new FfmpegDecoder(currentStationURL);
                 connectionTime = Time.realtimeSinceStartup - realtimeAtStart;
                 
-                //int bufferInt = ffmpegReader.WaveFormat.SampleRate * ffmpegReader.WaveFormat.BlockAlign;
-                //bufferInt = (int)Mathf.Round((float)bufferInt * (float)NetRadio.bufferTimeInSeconds);
                 int bufferInt = (int)Mathf.Round((float)ffmpegReader.WaveFormat.BytesPerSecond * (float)NetRadio.bufferTimeInSeconds);
                 var buffer = new BufferSource(ffmpegReader, bufferInt);
 
@@ -335,7 +333,6 @@ namespace NetRadio
         public async Task<IcecastStatus> GetMetadata(string url = "") {
             if (m_httpClient == null) { m_httpClient = CreateHTTPClient(); }
             if (url == "") { url = currentStationURL; }
-            if (Settings.PreferredFUFMStreams.Values.Contains(url)) { url = Settings.FUFMurl; }
             IcecastStatus metadata = await GetMetaDataFromIceCastStream(url);
             return metadata; 
         }
@@ -357,9 +354,6 @@ namespace NetRadio
                 if (!string.IsNullOrWhiteSpace(metadataURL)) { 
                     try {
                         float realtimeAtStart = Time.realtimeSinceStartup;
-                        if (Settings.PreferredFUFMStreams.Values.Contains(metadataURL)) { 
-                            metadataURL = Settings.FUFMurl; // more reliable
-                        }
                         currentMetadata = await GetMetaDataFromIceCastStream(metadataURL); 
                         float processingTime = Time.realtimeSinceStartup - realtimeAtStart;
 
@@ -372,7 +366,7 @@ namespace NetRadio
                                     ? SaveData.stationSettingsByURL[urlForCurrent].metadataTimeOffsetSeconds : (decimal)0.0;
                             metadataTimeOffset = (float)savedTime;
                             if (metadataTimeOffset > 0f && looped) { 
-                                awaitTime = (int)Mathf.Clamp(awaitTime - metadataTimeOffset*1000.0f, 20.0f, 2000.0f); 
+                                /* awaitTime = (int)Mathf.Clamp(awaitTime - metadataTimeOffset*1000.0f, 20.0f, 2000.0f); */
                                 await DelayTrackingInSteps((int)(metadataTimeOffset*1000.0f)); 
                             }
                             looped = true;

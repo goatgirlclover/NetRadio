@@ -133,13 +133,8 @@ namespace NetRadio
 
         public static string GetPreferredFUFMStream()
         {
-            return GetPreferredFUFMStream(Settings.preferredFUFMStream.Value.ToUpper());
-        }
-
-        public static string GetPreferredFUFMStream(string id)
-        {
-            if (PreferredFUFMStreams.Keys.Contains(id)) { return PreferredFUFMStreams[id]; }
-            else { return PreferredFUFMStreams["OPUS"]; }
+            string key = preferredFUFMStream.Value.ToUpper();
+            return PreferredFUFMStreams.ContainsKey(key) ? PreferredFUFMStreams[key] : PreferredFUFMStreams["OPUS"];
         }
 
         public static List<string> SplitStringByCommas(string input) {
